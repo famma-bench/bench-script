@@ -19,14 +19,17 @@ def get_dataset_statistics(data_dir):
         "image_type_count": defaultdict(int),
         "image_type_set": set(),
         "subfield_count": defaultdict(int),
-        "subfield_kinds": set(),
+        "subfield_set": set(),
         "topic_difficulty_count": defaultdict(int),
         "explanation_count": 0,
         "multiple_images_count": 0,
         "token_counts": defaultdict(lambda: {"total": 0, "count": 0, "average": 0}),
         "subfield_difficulty_count": defaultdict(lambda: defaultdict(lambda: {"easy": 0, "medium": 0, "hard": 0})),
         "total_token_sum": {"total": 0, "count": 0, "average": 0},
-        "language_difficulty_count": defaultdict(lambda: {"easy": 0, "medium": 0, "hard": 0})
+        "language_difficulty_count": defaultdict(lambda: {"easy": 0, "medium": 0, "hard": 0}),
+        "question_type_difficulty_count": defaultdict(
+            lambda: {"easy": 0, "medium": 0, "hard": 0}
+        ),
     }
 
     # Traverse directories and files
@@ -48,7 +51,7 @@ def get_dataset_statistics(data_dir):
                     stats["image_type_count"][item["image_type"]] += 1
                     stats["image_type_set"].add(item["image_type"])
                     stats["subfield_count"][item["subfield"]] += 1
-                    stats["subfield_kinds"].add(item["subfield"])
+                    stats["subfield_set"].add(item["subfield"])
                     stats["topic_difficulty_count"][item["topic_difficulty"]] += 1
                     if item["explanation"]:
                         stats["explanation_count"] += 1
@@ -71,6 +74,10 @@ def get_dataset_statistics(data_dir):
 
                     # Update language difficulty counts
                     stats["language_difficulty_count"][language][difficulty] += 1
+
+                    # Update question type difficulty counts
+                    question_type = item["question_type"]
+                    stats["question_type_difficulty_count"][question_type][difficulty] += 1
 
     # Calculate the average token count for each language
     for language, token_data in stats["token_counts"].items():
@@ -158,7 +165,7 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
         "total_score": 0,
         "max_score": 0,
     })
-    
+
     # Initialize per-subfield statistics
     subfield_stats = defaultdict(lambda: {
         "total_count": 0,
@@ -223,8 +230,10 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
         total_score = stats["total_score"]
         max_score = stats["max_score"]
 
-        accuracy_rate = round(correct_count / total_count, 3) if total_count > 0 else 0.0
-        normalized_score = ((total_score - min_score) / (max_score - min_score) * 100) if max_score > min_score else 0.0
+        accuracy_rate = round(correct_count / total_count,
+                              3) if total_count > 0 else 0.0
+        normalized_score = ((total_score - min_score) / (max_score -
+                            min_score) * 100) if max_score > min_score else 0.0
 
         result_dict["subfield_stats"][subfield] = {
             "total_count": total_count,
