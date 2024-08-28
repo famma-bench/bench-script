@@ -51,11 +51,13 @@ class ModelClient:
 
     def postprocess(self, output):
         """ """
-        model_output = None
+        model_output = ""
         if isinstance(output, str):
             model_output = output
-        else:
-            model_output = output.get("content", [{"text": ""}])[0].get("text", "")
+        elif hasattr(output, 'content') and isinstance(output.content, list):
+            first_item = output.content[0] if len(output.content) > 0 else None
+            if first_item and hasattr(first_item, 'text'):
+                model_output = first_item.text
         return model_output
 
     def __call__(self, prompt: str, images):
