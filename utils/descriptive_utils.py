@@ -141,6 +141,14 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
             "unable_to_answer_count": 0,
             "total_score": 0.0,
             "max_score": 0,
+        }),
+        "difficulty_stats": defaultdict(lambda: {
+            "total_count": 0,
+            "correct_count": 0,
+            "unable_to_answer_count": 0,
+            "total_score": 0.0,
+            "accuracy_rate": 0.0,
+            "normalized_score": 0.0,
         })
     }
 
@@ -174,6 +182,15 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
         "total_score": 0.0,
         "max_score": 0,
     })
+    
+     # Initialize per-subfield statistics
+    difficulty_stats = defaultdict(lambda: {
+        "total_count": 0,
+        "correct_count": 0,
+        "unable_to_answer_count": 0,
+        "total_score": 0.0,
+        "max_score": 0,
+    })
 
     from utils.eval_utils import score_dict
 
@@ -181,6 +198,7 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
     for question_id, question_data in data.items():
         language_key = question_data["language"].capitalize()
         subfield_key = question_data["subfield"]
+        difficulty = question_data["topic_difficulty"]
         topic_difficulty_score = score_dict.get(
             question_data["topic_difficulty"], 0)
 
@@ -190,15 +208,21 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
         # Update subfield stats
         subfield_stats[subfield_key]["total_count"] += 1
         subfield_stats[subfield_key]["max_score"] += topic_difficulty_score
+        # Update difficulty stats
+        difficulty_stats[difficulty]["total_count"] += 1
+        difficulty_stats[difficulty]["max_score"] += topic_difficulty_score
 
-        if question_data.get("is_correct"):
+        if question_data.get("is_correct") == True:
             language_stats[language_key]["correct_count"] += 1
             language_stats[language_key]["total_score"] += topic_difficulty_score
             subfield_stats[subfield_key]["correct_count"] += 1
             subfield_stats[subfield_key]["total_score"] += topic_difficulty_score
+            difficulty_stats[difficulty]["correct_count"] += 1
+            difficulty_stats[difficulty]["total_score"] += topic_difficulty_score
         elif question_data.get("is_correct") == "unable to answer":
             language_stats[language_key]["unable_to_answer_count"] += 1
             subfield_stats[subfield_key]["unable_to_answer_count"] += 1
+            difficulty_stats[difficulty]["unable_to_answer_count"] += 1
 
     # Compute language-specific statistics
     for language, stats in language_stats.items():
@@ -236,6 +260,28 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
                             min_score) * 100) if max_score > min_score else 0.0
 
         result_dict["subfield_stats"][subfield] = {
+            "total_count": total_count,
+            "correct_count": correct_count,
+            "unable_to_answer_count": unable_to_answer_count,
+            "accuracy_rate": accuracy_rate,
+            "total_score": total_score,
+            "normalized_score": round(normalized_score, 2)
+        }
+
+    # Compute subfield-specific statistics
+    for difficulty, stats in difficulty_stats.items():
+        total_count = stats["total_count"]
+        correct_count = stats["correct_count"]
+        unable_to_answer_count = stats["unable_to_answer_count"]
+        total_score = stats["total_score"]
+        max_score = stats["max_score"]
+
+        accuracy_rate = round(correct_count / total_count,
+                              3) if total_count > 0 else 0.0
+        normalized_score = ((total_score - min_score) / (max_score -
+                            min_score) * 100) if max_score > min_score else 0.0
+
+        result_dict["difficulty_stats"][difficulty] = {
             "total_count": total_count,
             "correct_count": correct_count,
             "unable_to_answer_count": unable_to_answer_count,
