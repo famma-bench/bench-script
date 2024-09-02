@@ -182,8 +182,8 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
         "total_score": 0.0,
         "max_score": 0,
     })
-    
-     # Initialize per-subfield statistics
+
+    # Initialize per-subfield statistics
     difficulty_stats = defaultdict(lambda: {
         "total_count": 0,
         "correct_count": 0,
@@ -212,17 +212,17 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
         difficulty_stats[difficulty]["total_count"] += 1
         difficulty_stats[difficulty]["max_score"] += topic_difficulty_score
 
-        if question_data.get("is_correct") == True:
+        if question_data.get("is_correct") == "unable to answer":
+            language_stats[language_key]["unable_to_answer_count"] += 1
+            subfield_stats[subfield_key]["unable_to_answer_count"] += 1
+            difficulty_stats[difficulty]["unable_to_answer_count"] += 1
+        elif question_data.get("is_correct") == True or question_data.get("is_correct") == 'True':
             language_stats[language_key]["correct_count"] += 1
             language_stats[language_key]["total_score"] += topic_difficulty_score
             subfield_stats[subfield_key]["correct_count"] += 1
             subfield_stats[subfield_key]["total_score"] += topic_difficulty_score
             difficulty_stats[difficulty]["correct_count"] += 1
             difficulty_stats[difficulty]["total_score"] += topic_difficulty_score
-        elif question_data.get("is_correct") == "unable to answer":
-            language_stats[language_key]["unable_to_answer_count"] += 1
-            subfield_stats[subfield_key]["unable_to_answer_count"] += 1
-            difficulty_stats[difficulty]["unable_to_answer_count"] += 1
 
     # Compute language-specific statistics
     for language, stats in language_stats.items():
@@ -301,4 +301,5 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
 
     # Convert data to DataFrame and save to CSV
     data_df = pd.DataFrame.from_dict(data, orient='index')
-    data_df.to_csv(csv_file_path, index=False)
+    data_df.to_csv(csv_file_path, encoding='utf_8_sig',
+                   header=True, index=False)
