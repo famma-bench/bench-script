@@ -51,7 +51,7 @@ class ModelClient:
             else:
                 model_output = output.choices[0].message.content
         except Exception as e:
-            model_output = "unable to answer"
+            model_output = ""
         return model_output
 
     def forward(self, prompt, images):
