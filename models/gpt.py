@@ -45,10 +45,13 @@ class ModelClient:
         return output
 
     def output_process(self, output):
-        if isinstance(output, str):
-            model_output = output
-        else:
-            model_output = output.choices[0].message.content
+         try:
+            if isinstance(output, str):
+                model_output = output
+            else:
+                model_output = output.choices[0].message.content
+        except Exception as e:
+            model_output = "unable to answer"
         return model_output
 
     def forward(self, prompt, images):
