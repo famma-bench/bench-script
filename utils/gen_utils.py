@@ -72,7 +72,8 @@ def extract_choice_from_response(response, all_choices, choice_ans):
     # if all above doesn't get candidates, check if the content is larger than 5 tokens and try to parse the example
     if len(candidates) == 0 and len(response.split()) > 5:
         for index, ans in choice_ans.items():
-            if ans.lower() in response.lower():
+            ans_pattern = f" {ans.strip()} "
+            if ans_pattern.lower() in response.lower():
                 candidates.append(index)
                 index_ans = False  # it's content ans.
 
