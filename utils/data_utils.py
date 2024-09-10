@@ -18,6 +18,8 @@ def image_to_base64(image):
     """
     Convert image to base64 format
     """
+    if image.mode == 'RGBA':
+        image = image.convert('RGB')
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
