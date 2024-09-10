@@ -14,8 +14,8 @@ logging.basicConfig(level=logging.INFO,
 
 score_dict = {
     "easy": 1,
-    "medium": 2,
-    "hard": 3
+    "medium":1.5,
+    "hard": 2
 }
 
 
