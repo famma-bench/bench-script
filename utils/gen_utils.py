@@ -160,17 +160,16 @@ def process_response(model_name, data_df, response, is_multiple_choice=False):
         response_answer = response_entry.get(
             f"answer-{index + 1}", default_response.get(language))
 
+        data_df.at[index, "model_answer"] = response_answer  
         data_df.at[index, "model_explanation"] = response_entry.get(
             f"explanation-{index + 1}", default_response.get(language))
-
+        
         if is_multiple_choice:
             options = format_options(data_df.at[index, "options"])
             labels = options["labels"]
             options_dict = options["options_dict"]
-            data_df.at[index, "model_answer"] = extract_choice_from_response(
+            data_df.at[index, "model_extract_answer"] = extract_choice_from_response(
                 response_answer, labels, options_dict)
-        else:
-            data_df.at[index, "model_answer"] = response_answer
 
     return data_df
 
@@ -238,11 +237,11 @@ def generate_answer_by_model(model_name, model_api, sub_question_set_df, target_
 
     # Save the current sub_question_set answers to the local DDB to prevent data loss
     ddb_samples = pd.concat([multiple_choice_result, open_question_result], ignore_index=True)[
-        ["model_answer", "model_explanation", "model_name"]]
+        ["model_answer", "model_extract_answer", "model_explanation", "model_name"]]
     ddb_samples_dict = ddb_samples.to_dict(orient='records')
 
     with DDB.at(target_db_name).session() as (sess, obj):
-        obj[key] = [{"model_answer": row["model_answer"], "model_explanation": row["model_explanation"], "model_name": row["model_name"]}
+        obj[key] = [{"model_answer": row["model_answer"], "model_extract_answer": row["model_extract_answer"], "model_explanation": row["model_explanation"], "model_name": row["model_name"]}
                     for row in ddb_samples_dict]
         sess.write()
 
@@ -301,11 +300,11 @@ def generate_ans(model_name, api_key, data_dir, subset_name, save_dir, question_
 
             if not existing_data.empty:
                 existing_data = existing_data[[
-                    "model_answer", "model_explanation", "model_name"]].reset_index(drop=True)
+                    "model_answer", "model_extract_answer", "model_explanation", "model_name"]].reset_index(drop=True)
                 sub_question_set_df = sub_question_set_df.reset_index(
                     drop=True).copy()
                 sub_question_set_df.loc[:, [
-                    "model_answer", "model_explanation", "model_name"]] = existing_data
+                    "model_answer", "model_extract_answer", "model_explanation", "model_name"]] = existing_data
                 output_samples = pd.concat(
                     [output_samples, sub_question_set_df], ignore_index=True)
             else:
