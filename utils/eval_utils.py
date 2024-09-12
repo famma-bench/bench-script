@@ -25,7 +25,7 @@ def evaluate_multiple_choice(sample):
     considering it correct if there is an exact match
     """
     gold_i = sample["answers"]
-    pred_i = sample["model_answer"]
+    pred_i = sample["model_extract_answer"]
     correct = False
     # only they are exactly the same, we consider it as correct
     if isinstance(gold_i, list):
