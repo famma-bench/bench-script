@@ -152,6 +152,7 @@ def process_response(model_name, data_df, response, is_multiple_choice=False):
     # Prepare columns for answers and explanations
     data_df['model_answer'] = ""
     data_df['model_explanation'] = ""
+    data_df['model_extract_answer'] = ""
     data_df['model_name'] = model_name
 
     for index in data_df.index:
