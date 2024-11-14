@@ -88,27 +88,26 @@ def convert_to_json_list(dataset):
     return json_list
 
 
-def download_data(hf_dir, subset_name, save_dir):
+def download_data(hf_dir, split, save_dir):
     """
     Download from huggingface repo and convert all data files into json files
     """
-    if not subset_name:
-        subsets = ["English", "Chinese", "French"]
+
+    # Default splits if none specified
+    if split is None:
+        splits = ["validation", "test"]
     else:
-        subsets = [subset_name]
+        splits = [split]
 
-    splits = ["validation", "test"]
+    dataset = load_dataset(hf_dir)
 
-    for subset in subsets:
-        dataset = load_dataset(hf_dir, subset)
+    for split_name in splits:
+        json_list = convert_to_json_list(dataset[split_name])
 
-        for split in splits:
-            json_list = convert_to_json_list(dataset[split])
+        split_path = os.path.join(save_dir, f"{split_name}.json")
+        os.makedirs(os.path.dirname(split_path), exist_ok=True)
 
-            split_path = os.path.join(save_dir, subset, f"{split}.json")
-            os.makedirs(os.path.dirname(split_path), exist_ok=True)
-
-            save_json(split_path, json_list)
-            print(f"Saved {split} split of {subset} subset to {split_path}")
+        save_json(split_path, json_list)
+        print(f"Saved {split_name} split to {split_path}")
 
     return
