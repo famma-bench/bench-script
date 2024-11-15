@@ -12,6 +12,9 @@ from tqdm import tqdm
 from models import get_client_fn
 from utils.data_utils import format_options, read_json, remove_json_format, default_response
 from utils.prompt_utils import MultipleChoiceQuestionPrompt, OpenQuestionPrompt
+from easyllm_kit.models import LLM
+from easyllm_kit.configs import Config
+
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -97,7 +100,7 @@ def extract_choice_from_response(response, all_choices, choice_ans):
     return pred_index
 
 
-def get_question_response(model_api, context, question_df, images, question_type="multiple-choice"):
+def get_question_response(model, context, question_df, images, question_type="multiple-choice"):
     """
     Get answers for either multiple-choice or open-ended questions from the DataFrame.
     """
@@ -110,7 +113,21 @@ def get_question_response(model_api, context, question_df, images, question_type
         input_prompt = OpenQuestionPrompt().get_prompt(
             context=context, sub_questions=sub_questions)
 
-    model_output = model_api(input_prompt, images)
+    # we use litellm api for all the models
+    msg = [{
+                "type": "text",
+                "text": input_prompt,
+            }
+            ]
+    for image in images:
+        msg.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image}"
+                    },
+                })
+    
+    model_output = model.generate(msg)
     return model_output
 
 
@@ -175,7 +192,7 @@ def process_response(model_name, data_df, response, is_multiple_choice=False):
     return data_df
 
 
-def generate_answer_by_model(model_name, model_api, sub_question_set_df, target_db_name, key):
+def generate_answer_by_model(model, sub_question_set_df, target_db_name, key):
     """
     Generates model answer and explanation for a subset of questions, including both multiple-choice 
     and open-ended types.
@@ -219,9 +236,9 @@ def generate_answer_by_model(model_name, model_api, sub_question_set_df, target_
         multiple_choice_df['question'] = multiple_choice_df.apply(
             format_question, axis=1)
         multiple_choice_response = get_question_response(
-            model_api, context, multiple_choice_df, images, question_type="multiple-choice")
+            model, context, multiple_choice_df, images, question_type="multiple-choice")
         multiple_choice_result = process_response(
-            model_name, multiple_choice_df, multiple_choice_response, is_multiple_choice=True)
+            model.model_name, multiple_choice_df, multiple_choice_response, is_multiple_choice=True)
     else:
         multiple_choice_result = pd.DataFrame()
 
@@ -230,9 +247,9 @@ def generate_answer_by_model(model_name, model_api, sub_question_set_df, target_
         'question_type == "open question"').copy()
     if not open_question_df.empty:
         open_question_response = get_question_response(
-            model_api, context, open_question_df, images, question_type="open question")
+            model, context, open_question_df, images, question_type="open question")
         open_question_result = process_response(
-            model_name, open_question_df, open_question_response, is_multiple_choice=False)
+            model.model_name, open_question_df, open_question_response, is_multiple_choice=False)
     else:
         open_question_result = pd.DataFrame()
 
@@ -269,14 +286,17 @@ def save_output_samples(output_samples, model_name, save_dir):
     logging.info("Saved output samples to %s", output_file_path)
 
 
-def generate_ans(model_name, api_key, data_dir, subset_name, save_dir, question_ids):
+def generate_ans(config_dir, data_dir, save_dir, question_ids):
     """
     Generate dataset answers with a model, save the output as JSON files.
     """
-    # 1. Initialize API
-    Client = get_client_fn(model_name)
-    model_api = Client(api_key, model_name=model_name,
-                       response_format={"type": "json_object"})
+    # Load configuration from YAML file
+    model_config = Config.build_from_yaml_file(config_dir)
+
+    # Build the LLM model
+    model = LLM.build_from_config(model_config)
+
+    model_name = model.model_name
 
     # Initialize the DDB
     target_db_name = f'{model_name}_DDB'
@@ -286,7 +306,7 @@ def generate_ans(model_name, api_key, data_dir, subset_name, save_dir, question_
 
     # 2. Load the dataset
     dataset = prepare_dataset_for_generation(
-        data_dir, subset_name, question_ids)
+        data_dir, question_ids)
 
     # 3. Process dataset and feed into the model
     output_samples = pd.DataFrame()
@@ -310,7 +330,7 @@ def generate_ans(model_name, api_key, data_dir, subset_name, save_dir, question_
                     [output_samples, sub_question_set_df], ignore_index=True)
             else:
                 output_samples_subset = generate_answer_by_model(
-                    model_name, model_api, sub_question_set_df, target_db_name, key
+                    model, sub_question_set_df, target_db_name, key
                 )
                 output_samples = pd.concat(
                     [output_samples, output_samples_subset], ignore_index=True, sort=False)

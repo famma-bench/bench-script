@@ -8,16 +8,11 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--model_name", type=str, default="gpt-4o")
-
-    parser.add_argument("--api_key", type=str,
-                        default='sk-xxx')
+    parser.add_argument("--config_dir", type=str, default="./config.yaml",
+                        help="The dir of model config file.")
 
     parser.add_argument("--data_dir", type=str,
                         default="./data", help="The parent dir of dataset")
-
-    parser.add_argument("--subset_name", type=str, default=None,
-                        help="name for the dataset, English / Chinese / French. If None, we will generate all the sub datasets.")
 
     parser.add_argument("--question_ids", type=parse_list, default=None,
                         help="list of question ids to query. If None, we will run over all the questions in the subset")
@@ -27,5 +22,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    generate_ans(args.model_name, args.api_key, args.data_dir,
-                 args.subset_name, args.save_dir, args.question_ids)
+    generate_ans(args.config_dir, 
+                 args.data_dir,
+                 args.save_dir, 
+                 args.question_ids)
