@@ -255,10 +255,6 @@ def generate_answer_by_model(model, sub_question_set_df, target_db_name, key):
         ["model_answer", "model_extract_answer", "model_explanation", "model_name"]]
     ddb_samples_dict = ddb_samples.to_dict(orient='records')
 
-    # with DDB.at(target_db_name).session() as (sess, obj):
-    #     obj[key] = [{"model_answer": row["model_answer"], "model_extract_answer": row["model_extract_answer"], "model_explanation": row["model_explanation"], "model_name": row["model_name"]}
-    #                 for row in ddb_samples_dict]
-    #     sess.write()
     input_dict = [{"model_answer": row["model_answer"], "model_extract_answer": row["model_extract_answer"],
                    "model_explanation": row["model_explanation"], "model_name": row["model_name"]}
                   for row in ddb_samples_dict]
@@ -301,9 +297,6 @@ def generate_ans(config_dir, data_dir, save_dir, question_ids):
 
     # Initialize the DDB
     target_db_name = f'{model_name}_DDB'
-    # init_db = DDB.at(target_db_name).read()
-    # if init_db is None:
-    #     DDB.at(target_db_name).create()
 
     initialize_database(output_db=target_db_name)
 
