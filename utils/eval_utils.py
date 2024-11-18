@@ -151,7 +151,7 @@ def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir, output_db_name='
 
     logger.info(f"Calculating {response_model_name} score")
 
-    for _, question_data in tqdm(eval_df.iterrows()):
+    for _, question_data in eval_df.iterrows():
         is_correct = (evaluate_multiple_choice(question_data)
                       if question_data["question_type"] == "multiple-choice"
                       else evaluate_open_question(question_data, model))
