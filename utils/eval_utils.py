@@ -124,7 +124,7 @@ def prepare_dataset_for_evaluation(pred_json_dir, gold_json_dir):
     return gold_df
 
 
-def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir):
+def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir, output_db_name='eval'):
     """
     Evaluates model performance on a dataset by calculating accuracy, real score, and normalized score, 
     then saves the results and evaluation data to specified directories
@@ -137,6 +137,8 @@ def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir):
 
     # Load all datasets from the data directory
     eval_df = prepare_dataset_for_evaluation(gen_data_dir, gold_data_dir)
+
+    database = initialize_database(output_db=output_db_name)
 
     # Initialize score-related variables
     total_count = len(eval_df)
@@ -162,6 +164,12 @@ def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir):
             unable_to_answer_count += 1
         elif is_correct:
             correct_count += 1
+
+        key = question_data['question_id']
+        if key not in database:
+            # convert question_data to dict
+            input_dict = question_data.to_dict()
+            write_to_database(output_db_name, key, input_dict)
 
     postprocess(response_model_name, save_dir, total_count,
                 correct_count, unable_to_answer_count, total_score, eval_df)

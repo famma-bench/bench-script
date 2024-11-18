@@ -325,7 +325,6 @@ def generate_ans(config_dir, data_dir, save_dir, question_ids):
                                                "model_name"]] = existing_data
                 output_samples = pd.concat(
                     [output_samples, sub_question_set_df], ignore_index=True)
-                print(len(output_samples))
             else:
                 logger.info(f'start genererating answers for {key}')
                 output_samples_subset = generate_answer_by_model(
