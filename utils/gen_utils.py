@@ -325,7 +325,9 @@ def generate_ans(config_dir, data_dir, save_dir, question_ids):
                                                "model_name"]] = existing_data
                 output_samples = pd.concat(
                     [output_samples, sub_question_set_df], ignore_index=True)
+                print(len(output_samples))
             else:
+                logger.info(f'start genererating answers for {key}')
                 output_samples_subset = generate_answer_by_model(
                     model, sub_question_set_df, target_db_name, key
                 )
@@ -335,11 +337,10 @@ def generate_ans(config_dir, data_dir, save_dir, question_ids):
         except Exception as e:
             logger.error(
                 "Error processing main_question_id %s: %s", main_question_id, str(e))
-            time.sleep(2)
             continue
 
         # Avoid hitting rate limits or overwhelming the API
-        time.sleep(2)
+        # time.sleep(2)
 
     logger.info('Generation complete')  # logger
     save_output_samples(output_samples, model_name, save_dir)

@@ -1,22 +1,17 @@
-import logging
 import os
 
 import pandas as pd
-import time
 
 from tqdm import tqdm
-from models import get_client_fn
 from utils.descriptive_utils import postprocess
 from utils.prompt_utils import JudgePrompt
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+from easyllm_kit.utils.io_utils import initialize_database, write_to_database
+from easyllm_kit.utils import get_logger, read_json, save_json
+from easyllm_kit.models import LLM
+from easyllm_kit.configs import Config
 
-score_dict = {
-    "easy": 1,
-    "medium":1.5,
-    "hard": 2
-}
+logger = get_logger('famma', 'famma.log')
 
 
 def evaluate_multiple_choice(sample):
@@ -39,7 +34,7 @@ def evaluate_multiple_choice(sample):
     return correct
 
 
-def evaluate_open_question(sample, model_api):
+def evaluate_open_question(sample, model):
     """
     Evaluates if the model's open-ended answer is correct by checking if "incorrect" appears in the model's response
     """
@@ -71,7 +66,21 @@ def evaluate_open_question(sample, model_api):
         model_explanation=model_explanation,
         answer=answer
     )
-    model_output = model_api(input_prompt, images).lower()
+    # we use litellm api for all the models
+    msg = [{
+        "type": "text",
+        "text": input_prompt,
+    }
+    ]
+    for image in images:
+        msg.append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{image}"
+            },
+        })
+
+    model_output = model.generate(msg).lower()
 
     if "unable to answer" in model_output:
         return "unable to answer"
@@ -83,71 +92,76 @@ def evaluate_open_question(sample, model_api):
     return False
 
 
-def prepare_dataset_for_evaluation(data_dir):
+def prepare_dataset_for_evaluation(pred_json_dir, gold_json_dir):
     """
     Read and return a list of DataFrames from all CSV files in the specified directory
     """
-    result = []
 
-    # Get all CSV files in the directory
-    csv_files = [os.path.join(data_dir, file) for file in os.listdir(
-        data_dir) if file.endswith(".csv")]
+    # read all json files in the directory
+    pred_jsons = read_json(pred_json_dir)
+    gold_jsons = read_json(gold_json_dir)
 
-    for file in csv_files:
-        # Read each CSV file into a DataFrame and append to result list
-        df = pd.read_csv(file)
-        result.append(df)
+    # make gold_jsons a dataframe
+    gold_df = pd.DataFrame(gold_jsons)
+    gold_df['model_name'] = None
+    gold_df['model_extract_answer'] = None
+    gold_df['model_answer'] = None
+    gold_df['model_explanation'] = None
 
-    return result
+    # look up main_question_id and sub_question_id in the gold json file
+    # add answers to the pred_jsons
+    for k, pred_json in pred_jsons.items():
+        language, main_question_id = k.split("_")
+        # find question_id in gold_jsons given the main_question_id and language
+        question_set = gold_df[
+            (gold_df["main_question_id"] == int(main_question_id)) & (gold_df["language"] == language)]
+        question_ids = question_set["question_id"].sort_values().tolist()
+        # insert answers in pred_json to gold_jsons, with each answer in the order of question_ids
+        for idx, question_id in enumerate(question_ids):
+            mask = gold_df["question_id"] == question_id
+            for key, value in pred_json[idx].items():
+                gold_df.loc[mask, key] = value
+    return gold_df
 
 
-def eval_ans(model_name, api_key, data_dir, save_dir):
+def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir):
     """
     Evaluates model performance on a dataset by calculating accuracy, real score, and normalized score, 
     then saves the results and evaluation data to specified directories
     """
-    # Initialize API client
-    Client = get_client_fn(model_name)
-    model_api = Client(api_key, model_name=model_name, temperature=0.0)
+    # Load configuration from YAML file
+    model_config = Config.build_from_yaml_file(config_dir)
+
+    # Build the LLM model
+    model = LLM.build_from_config(model_config)
 
     # Load all datasets from the data directory
-    eval_datasets = prepare_dataset_for_evaluation(data_dir)
+    eval_df = prepare_dataset_for_evaluation(gen_data_dir, gold_data_dir)
 
-    for data_df in eval_datasets:
-        data = data_df.to_dict(orient='index')
-        # Initialize score-related variables
-        total_count = len(data)
-        correct_count = 0
-        unable_to_answer_count = 0
-        total_score = 0
-        max_score = sum(score_dict.get(
-            sample["topic_difficulty"], 0) for sample in data.values())
+    # Initialize score-related variables
+    total_count = len(eval_df)
+    correct_count = 0
+    unable_to_answer_count = 0
+    total_score = 0
 
-        # Get the context from the first sub_question
-        first_sample = next(iter(data.values()))
-        response_model_name = first_sample.get("model_name", "")
+    # Get the context from the first sub_question
+    response_model_name = eval_df.loc[0, 'model_name']
 
-        logging.info(f"Calculating {response_model_name} score")
+    logger.info(f"Calculating {response_model_name} score")
 
-        for _, question_data in tqdm(data.items()):
-            difficulty_score = score_dict.get(
-                question_data["topic_difficulty"], 0)
-            is_correct = (evaluate_multiple_choice(question_data)
-                          if question_data["question_type"] == "multiple-choice"
-                          else evaluate_open_question(question_data, model_api))
+    for _, question_data in tqdm(eval_df.iterrows()):
+        is_correct = (evaluate_multiple_choice(question_data)
+                      if question_data["question_type"] == "multiple-choice"
+                      else evaluate_open_question(question_data, model))
 
-            # Ensure the correct status is saved
-            question_data["is_correct"] = is_correct
+        # Ensure the correct status is saved
+        question_data["is_correct"] = is_correct
 
-            # Model is unable to answer, not a judge unable to answer
-            if is_correct == "unable to answer":
-                unable_to_answer_count += 1
-            elif is_correct:
-                correct_count += 1
-                total_score += difficulty_score
+        # Model is unable to answer, not a judge unable to answer
+        if is_correct == "unable to answer":
+            unable_to_answer_count += 1
+        elif is_correct:
+            correct_count += 1
 
-            # Avoid hitting rate limits or overwhelming the API
-            time.sleep(2)
-
-        postprocess(response_model_name, save_dir, total_count,
-                    correct_count, unable_to_answer_count, total_score, max_score, data)
+    postprocess(response_model_name, save_dir, total_count,
+                correct_count, unable_to_answer_count, total_score, eval_df)

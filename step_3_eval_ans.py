@@ -1,5 +1,8 @@
 import argparse
 from utils.eval_utils import eval_ans
+import json
+
+from easyllm_kit.utils import read_json, save_json
 
 if __name__ == "__main__":
     """
@@ -7,16 +10,23 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--model_name", type=str, default="gpt-4o")
+    parser.add_argument("--config_dir", type=str, default="./eval_config.yaml",
+                        help="The dir of model config file.")
 
-    parser.add_argument("--api_key", type=str)
-
-    parser.add_argument("--data_dir", type=str,
+    parser.add_argument("--gen_data_dir", type=str, default="ddb_storage/gemini-1.5_DDB.json",
                         help="The parent dir of dataset ")
 
-    parser.add_argument("--save_dir", type=str, default="./result",
+    parser.add_argument("--gold_data_dir", type=str, default="ddb_storage/test_gold.json",
+                        help="The parent dir of dataset ")
+
+    parser.add_argument("--save_output_dir", type=str, default="./result",
                         help="The local dir to save the evaluation result")
 
     args = parser.parse_args()
 
-    eval_ans(args.model_name, args.api_key, args.data_dir, args.save_dir)
+    eval_ans(args.config_dir,
+             args.gen_data_dir,
+             args.gold_data_dir,
+             args.save_output_dir)
+
+

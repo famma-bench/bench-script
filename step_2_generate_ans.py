@@ -8,7 +8,7 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--config_dir", type=str, default="./config.yaml",
+    parser.add_argument("--config_dir", type=str, default="./gen_config.yaml",
                         help="The dir of model config file.")
 
     parser.add_argument("--data_dir", type=str,
