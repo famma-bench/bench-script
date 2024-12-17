@@ -22,11 +22,15 @@ if __name__ == "__main__":
     parser.add_argument("--save_output_dir", type=str, default="./result",
                         help="The local dir to save the evaluation result")
 
+    parser.add_argument("--consolidate_only", type=bool, default=True,
+                        help="Only consolidate the result, not using GPT to evaluate each question")
+
     args = parser.parse_args()
 
     eval_ans(args.config_dir,
              args.gen_data_dir,
              args.gold_data_dir,
-             args.save_output_dir)
+             args.save_output_dir,
+             args.consolidate_only)
 
 

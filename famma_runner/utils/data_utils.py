@@ -24,21 +24,6 @@ def image_to_base64(image):
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-
-def save_json(filename, ds):
-    """ 
-    Save data as JSON to the specified path
-    """
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(ds, f, ensure_ascii=False, indent=4)
-
-
-def read_json(filename):
-    with open(filename, "r", encoding="utf-8") as json_file:
-        json_data = json.load(json_file)
-    return json_data
-
-
 def remove_json_format(json_str):
     json_str = json_str.strip().lstrip('```json').strip()
     json_str = json_str.rstrip('```').strip()

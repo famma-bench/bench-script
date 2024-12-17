@@ -1,5 +1,5 @@
 import argparse
-from utils.data_utils import download_data
+from famma_runner.utils.data_utils import download_data
 
 if __name__ == "__main__":
     """

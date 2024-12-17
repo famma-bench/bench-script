@@ -1,9 +1,6 @@
-import os
-
 import pandas as pd
 
-from tqdm import tqdm
-from utils.descriptive_utils import postprocess
+from utils.descriptive_utils import consolidate_result
 from utils.prompt_utils import JudgePrompt
 
 from easyllm_kit.utils.io_utils import initialize_database, write_to_database
@@ -124,7 +121,12 @@ def prepare_dataset_for_evaluation(pred_json_dir, gold_json_dir):
     return gold_df
 
 
-def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir, output_db_name='eval'):
+def eval_ans(config_dir,
+             gen_data_dir,
+             gold_data_dir,
+             save_dir,
+             consolidate_only=False,
+             output_db_name='eval'):
     """
     Evaluates model performance on a dataset by calculating accuracy, real score, and normalized score, 
     then saves the results and evaluation data to specified directories
@@ -140,36 +142,23 @@ def eval_ans(config_dir, gen_data_dir, gold_data_dir, save_dir, output_db_name='
 
     database = initialize_database(output_db=output_db_name)
 
-    # Initialize score-related variables
-    total_count = len(eval_df)
-    correct_count = 0
-    unable_to_answer_count = 0
-    total_score = 0
-
     # Get the context from the first sub_question
     response_model_name = eval_df.loc[0, 'model_name']
 
     logger.info(f"Calculating {response_model_name} score")
+    if not consolidate_only:
+        for _, question_data in eval_df.iterrows():
+            is_correct = (evaluate_multiple_choice(question_data)
+                          if question_data["question_type"] == "multiple-choice"
+                          else evaluate_open_question(question_data, model))
 
-    for _, question_data in eval_df.iterrows():
-        is_correct = (evaluate_multiple_choice(question_data)
-                      if question_data["question_type"] == "multiple-choice"
-                      else evaluate_open_question(question_data, model))
+            # Ensure the correct status is saved
+            question_data["is_correct"] = is_correct
 
-        # Ensure the correct status is saved
-        question_data["is_correct"] = is_correct
+            key = question_data['question_id']
+            if key not in database:
+                # convert question_data to dict
+                input_dict = question_data.to_dict()
+                write_to_database(output_db_name, key, input_dict)
 
-        # Model is unable to answer, not a judge unable to answer
-        if is_correct == "unable to answer":
-            unable_to_answer_count += 1
-        elif is_correct:
-            correct_count += 1
-
-        key = question_data['question_id']
-        if key not in database:
-            # convert question_data to dict
-            input_dict = question_data.to_dict()
-            write_to_database(output_db_name, key, input_dict)
-
-    postprocess(response_model_name, save_dir, total_count,
-                correct_count, unable_to_answer_count, total_score, eval_df)
+    consolidate_result(database)

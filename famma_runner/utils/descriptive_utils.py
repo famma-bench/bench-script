@@ -113,60 +113,53 @@ def get_dataset_statistics(data_dir):
     # Return the statistics
     return stats
 
+def _convert_to_df(sample_score_db):
+    data_df = pd.DataFrame.from_dict(sample_score_db, orient='index')
+    return data_df
 
-def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answer_count, total_score, max_score, data):
+
+def consolidate_result(sample_score_db):
     """
     Calculates and saves evaluation metrics.
     """
     # Initialize result dictionary
+    sample_score_df = _convert_to_df(sample_score_db)
+    # get the first row
+    model_name = sample_score_df.iloc[0]["model_name"]
+    total_count = sample_score_df.shape[0]
+    correct_count = sample_score_df[sample_score_df["is_correct"] == True].shape[0]
+    unable_to_answer_count = sample_score_df[sample_score_df["is_correct"] == "unable to answer"].shape[0]
     result_dict = {
         "model_name": model_name,
         "total_count": total_count,
         "correct_count": correct_count,
         "unable_to_answer_count": unable_to_answer_count,
-        "accuracy_rate": 0.0,
-        "total_score": total_score,
-        "normalized_score": 0.0,
+        "accuracy_rate": round(correct_count / total_count, 3) if total_count > 0 else 0.0,
         "language_stats": defaultdict(lambda: {
             "total_count": 0,
             "correct_count": 0,
             "unable_to_answer_count": 0,
-            "total_score": 0.0,
-            "max_score": 0,
             "accuracy_rate": 0.0,
-            "normalized_score": 0.0,
             "difficulty_stats": defaultdict(lambda: {
                 "total_count": 0,
                 "correct_count": 0,
                 "unable_to_answer_count": 0,
-                "total_score": 0.0,
-                "max_score": 0,
                 "accuracy_rate": 0.0,
-                "normalized_score": 0.0
             })
         }),
         "subfield_stats": defaultdict(lambda: {
             "total_count": 0,
             "correct_count": 0,
+            "accuracy_rate": 0.0,
             "unable_to_answer_count": 0,
-            "total_score": 0.0,
-            "max_score": 0,
         }),
         "difficulty_stats": defaultdict(lambda: {
             "total_count": 0,
             "correct_count": 0,
+            "accuracy_rate": 0.0,
             "unable_to_answer_count": 0,
-            "total_score": 0.0,
-            "max_score": 0,
         })
     }
-
-    # Calculate accuracy rate
-    accuracy_rate = round(correct_count / total_count,
-                          3) if total_count > 0 else 0.0
-
-    # Update result dictionary with overall metrics
-    result_dict["accuracy_rate"] = accuracy_rate
 
     # Initialize per-language statistics
     language_stats = defaultdict(lambda: {
@@ -202,7 +195,7 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
     })
 
     # Compute per-language statistics
-    for question_id, question_data in data.items():
+    for question_id, question_data in sample_score_db.items():
         language_key = question_data["language"].capitalize()
         subfield_key = question_data["subfield"]
         difficulty = question_data["topic_difficulty"]
@@ -245,21 +238,14 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
             "correct_count": correct_count,
             "unable_to_answer_count": unable_to_answer_count,
             "accuracy_rate": accuracy_rate,
-            "total_score": total_score,
             "difficulty_stats": {difficulty: {
                 "total_count": stats["difficulty_stats"][difficulty]["total_count"],
                 "correct_count": stats["difficulty_stats"][difficulty]["correct_count"],
                 "unable_to_answer_count": stats["difficulty_stats"][difficulty]["unable_to_answer_count"],
-                "total_score": stats["difficulty_stats"][difficulty]["total_score"],
-                "max_score": stats["difficulty_stats"][difficulty]["max_score"],
                 "accuracy_rate": round(
                     stats["difficulty_stats"][difficulty]["correct_count"] /
                     stats["difficulty_stats"][difficulty]["total_count"], 3)
                 if stats["difficulty_stats"][difficulty]["total_count"] > 0 else 0.0,
-                "normalized_score": round(
-                    (stats["difficulty_stats"][difficulty]["total_score"] - 0) /
-                    (stats["difficulty_stats"][difficulty]["max_score"] - 0) * 100, 2)
-                if stats["difficulty_stats"][difficulty]["max_score"] > 0 else 0.0
             } for difficulty in stats["difficulty_stats"]}
         }
 
@@ -277,8 +263,7 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
             "total_count": total_count,
             "correct_count": correct_count,
             "unable_to_answer_count": unable_to_answer_count,
-            "accuracy_rate": accuracy_rate,
-            "total_score": total_score
+            "accuracy_rate": accuracy_rate
         }
 
     # Compute subfield-specific statistics
@@ -300,15 +285,5 @@ def postprocess(model_name, save_dir, total_count, correct_count, unable_to_answ
         }
 
     # Save results
-    final_save_dir = os.path.join(save_dir, "evaluation_result")
-    os.makedirs(final_save_dir, exist_ok=True)
-
-    csv_file_name = f"correction_result.csv"
-    csv_file_path = os.path.join(final_save_dir, csv_file_name)
-
-    save_json(os.path.join(final_save_dir, "score.json"), result_dict)
-
-    # Convert data to DataFrame and save to CSV
-    data_df = pd.DataFrame.from_dict(data, orient='index')
-    data_df.to_csv(csv_file_path, encoding='utf_8_sig',
-                   header=True, index=False)
+    # save to current directory
+    save_json('eval_result.json', result_dict)

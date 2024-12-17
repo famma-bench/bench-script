@@ -4,6 +4,15 @@ __pycache__/
 *$py.class
 *.pyc
 .DS_Store
+.idea/
+.vscode/
+
+*.json
+*.csv
+*.txt
+*.log
+*.pkl
+*.joblib
 
 # C extensions
 *.so
