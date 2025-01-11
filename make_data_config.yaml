@@ -1,6 +1,6 @@
 config_cls_name: make_data 
 
-source_csv_dir: ./data/source_data.csv
+source_csv_dir: ./source_data/FAMMA_v2406.csv
 source_image_dir: ./data/source_images
 hf_dir: weaverbirdllm/famma
 version: release_v2406
