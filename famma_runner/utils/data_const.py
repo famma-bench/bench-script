@@ -1,7 +1,7 @@
 from enum import Enum
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Any
-from datasets import Features, Value, Sequence
+from datasets import Features, Value, Sequence, Image
 
 class ReleaseVersion(str, Enum):
     """
@@ -80,14 +80,21 @@ class DatasetColumns(str, Enum):
     def get_features(cls) -> Features:
         """
         Returns the features dictionary compatible with Hugging Face datasets.
+        Uses Image feature for image columns.
         """
-        return Features({
+        features = {
             cls.QUESTION_ID: Value('string'),
             cls.CONTEXT: Value('string'),
             cls.QUESTION: Value('string'),
             cls.OPTIONS: Sequence(Value('string')),  # List of options
-            'images': Sequence(Value('string')),  # List of base64 strings
-            'answer_images': Sequence(Value('string')),  # List of base64 strings
+        }
+        
+        # Add individual image columns with Image feature
+        for i in range(1, 8):
+            features[f'image_{i}'] = Image(decode=False)  # decode=False to keep the path
+            
+        # Add remaining features before answer images and release
+        features.update({
             cls.IMAGE_TYPE: Value('string'),
             cls.ANSWERS: Value('string'),
             cls.EXPLANATION: Value('string'),
@@ -97,8 +104,16 @@ class DatasetColumns(str, Enum):
             cls.LANGUAGE: Value('string'),
             cls.MAIN_QUESTION_ID: Value('string'),
             cls.SUB_QUESTION_ID: Value('string'),
-            cls.RELEASE: Value('string')
         })
+        
+        # Add answer image columns with Image feature
+        for i in range(1, 4):
+            features[f'ans_image_{i}'] = Image(decode=False)  # decode=False to keep the path
+            
+        # Add release as the final column
+        features[cls.RELEASE] = Value('string')
+            
+        return Features(features)
 
     @classmethod
     def validate_sample(cls, sample: Dict) -> bool:
@@ -107,11 +122,19 @@ class DatasetColumns(str, Enum):
         Returns True if valid, raises ValueError if invalid.
         """
         required_keys = {
-            cls.QUESTION_ID, cls.CONTEXT, cls.QUESTION, 'images', 'answer_images',
+            cls.QUESTION_ID, cls.CONTEXT, cls.QUESTION,
             cls.IMAGE_TYPE, cls.ANSWERS, cls.EXPLANATION, cls.TOPIC_DIFFICULTY,
             cls.QUESTION_TYPE, cls.SUBFIELD, cls.LANGUAGE, cls.MAIN_QUESTION_ID,
             cls.SUB_QUESTION_ID, cls.RELEASE
         }
+        
+        # Add image columns to required keys
+        for i in range(1, 8):
+            required_keys.add(f'image_{i}')
+            
+        # Add answer image columns to required keys
+        for i in range(1, 4):
+            required_keys.add(f'ans_image_{i}')
         
         missing_keys = required_keys - set(sample.keys())
         if missing_keys:
