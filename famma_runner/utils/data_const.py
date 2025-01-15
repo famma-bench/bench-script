@@ -36,6 +36,7 @@ class DatasetColumns(str, Enum):
     Enum class for dataset column names.
     Inherits from str to allow direct string comparison and usage.
     """
+    INDEX = 'idx'
     QUESTION_ID = 'question_id'
     CONTEXT = 'context'
     QUESTION = 'question'
@@ -83,6 +84,7 @@ class DatasetColumns(str, Enum):
         Uses Image feature for image columns.
         """
         features = {
+            cls.INDEX: Value('int32'),
             cls.QUESTION_ID: Value('string'),
             cls.CONTEXT: Value('string'),
             cls.QUESTION: Value('string'),
@@ -122,7 +124,7 @@ class DatasetColumns(str, Enum):
         Returns True if valid, raises ValueError if invalid.
         """
         required_keys = {
-            cls.QUESTION_ID, cls.CONTEXT, cls.QUESTION,
+            cls.INDEX, cls.QUESTION_ID, cls.CONTEXT, cls.QUESTION,
             cls.IMAGE_TYPE, cls.ANSWERS, cls.EXPLANATION, cls.TOPIC_DIFFICULTY,
             cls.QUESTION_TYPE, cls.SUBFIELD, cls.LANGUAGE, cls.MAIN_QUESTION_ID,
             cls.SUB_QUESTION_ID, cls.RELEASE

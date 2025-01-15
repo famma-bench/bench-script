@@ -9,22 +9,73 @@ from easyllm_kit.utils import get_logger
 from typing import Optional
 from famma_runner.utils import find_image_file, DC, ReleaseVersion
 
-logger = get_logger('dataset_maker')
+logger = get_logger('dataset_maker', 'question_maker.log')
 
+
+def validate_question_id(df):
+    """
+    Validate question IDs in the dataset.
+    
+    Checks:
+    1. main_question_id should be monotonically increasing and continuous
+       e.g., [1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6...]
+    2. sub_question_id should be strictly monotonically increasing within each main_question_id
+       e.g., [1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 6...]
+    """
+    # Convert IDs to integers for comparison
+    df = df.copy()
+    df[DC.MAIN_QUESTION_ID] = df[DC.MAIN_QUESTION_ID].astype(int)
+    df[DC.SUB_QUESTION_ID] = df[DC.SUB_QUESTION_ID].astype(int)
+    
+    # Group by release to validate each release separately
+    for release, release_df in df.groupby(DC.RELEASE):
+        logger.info(f"Validating question IDs for release: {release}")
+        
+        # Sort by main_question_id to check monotonicity
+        release_df = release_df.sort_values([DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
+        
+        # Check main_question_id continuity
+        unique_main_ids = sorted(release_df[DC.MAIN_QUESTION_ID].unique())
+        expected_main_ids = list(range(1, len(unique_main_ids) + 1))
+        if unique_main_ids != expected_main_ids:
+            missing_ids = set(expected_main_ids) - set(unique_main_ids)
+            raise ValueError(f"Non-continuous main_question_ids in {release}. Missing IDs: {missing_ids}")
+        
+        # Check sub_question_id monotonicity within each main_question_id
+        for main_id, group in release_df.groupby(DC.MAIN_QUESTION_ID):
+            sub_ids = group[DC.SUB_QUESTION_ID].tolist()
+            
+            # Check if sub_question_ids start from 1
+            if sub_ids[0] != 1:
+                raise ValueError(f"Sub-question IDs for main_question_id {main_id} in {release} don't start from 1")
+            
+            # Check if sub_question_ids are continuous and increasing
+            expected_sub_ids = list(range(1, len(sub_ids) + 1))
+            if sub_ids != expected_sub_ids:
+                raise ValueError(
+                    f"Invalid sub_question_ids for main_question_id {main_id} in {release}. "
+                    f"Expected {expected_sub_ids}, got {sub_ids}"
+                )
+    
+    logger.info("Question ID validation passed successfully")
+    return True
 
 def prepare_dataset(csv_dir, image_parent_dir):
     """
     Prepare dataset from CSV and convert it to HuggingFace format.
-    Splits are determined by unique values in the 'release' column.
-    Images are only attached to the first sub-question of each main question.
-    
-    Args:
-        csv_dir: Path to the CSV file
-        image_parent_dir: Root directory containing all images
     """
-    # Read CSV file and sort by main_question_id and sub_question_id
+    # Read CSV file
     df = pd.read_csv(csv_dir, header=0)
-    df = df.sort_values([DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
+    
+    # Validate question IDs
+    validate_question_id(df)
+    logger.info("Question IDs validated successfully")
+    
+    # Sort DataFrame to ensure consistent ordering
+    df = df.sort_values([DC.RELEASE, DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
+    # Add index column
+    df[DC.INDEX] = range(len(df))
+    
     image_parent_dir = Path(image_parent_dir)
     
     def process_row(row, is_first_subquestion):
@@ -39,6 +90,7 @@ def prepare_dataset(csv_dir, image_parent_dir):
         question_id = f"{row[DC.LANGUAGE]}_{row[DC.MAIN_QUESTION_ID]}_{row[DC.SUB_QUESTION_ID]}_{release_short}"
 
         sample = {
+            DC.INDEX: row[DC.INDEX],
             DC.QUESTION_ID: question_id,
             DC.CONTEXT: row[DC.CONTEXT],
             DC.QUESTION: row[DC.QUESTION],
@@ -52,6 +104,7 @@ def prepare_dataset(csv_dir, image_parent_dir):
                 image_name = row[image_key]
                 if pd.notna(image_name):
                     # Try to find image with either jpg or png extension
+                    image_name = row['question_image_parent_dir'] + image_name
                     full_path = find_image_file(image_parent_dir, image_name)
                     if full_path is not None:
                         sample[image_key] = str(full_path)
@@ -80,6 +133,7 @@ def prepare_dataset(csv_dir, image_parent_dir):
             if is_first_subquestion:
                 image_name = row[ans_image_key]
                 if pd.notna(image_name):
+                    image_name = row['answer_image_parent_dir'] + image_name
                     # Try to find image with either jpg or png extension
                     full_path = find_image_file(image_parent_dir, image_name)
                     if full_path is not None:
@@ -161,7 +215,8 @@ def main():
     upload_to_hub(
         dataset_dict=dataset_dict,
         repo_name=config.hf.repo_name,
-        version=config.hf.version
+        version=config.hf.version,
+        token=config.hf.token
     )
     
     logger.info(f"Dataset uploaded successfully to {config.hf.repo_name} with tag {config.hf.version}")
