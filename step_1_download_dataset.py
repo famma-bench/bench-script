@@ -10,8 +10,8 @@ if __name__ == "__main__":
     parser.add_argument("--hf_dir", type=str, default="weaverbirdllm/famma",
                         help="The dir of dataset on huggingface.")
 
-    parser.add_argument("--split", type=str, default=None,
-                        help="validation / test, there are two splits. If None, download all the splits.")
+    parser.add_argument("--split", type=str, default='release_v2406',
+                        help="refer to the release version. If None, download all the splits.")
 
     parser.add_argument("--save_dir", type=str, default="./hf_data",
                         help="The local dir to save the dataset.",)

@@ -49,7 +49,7 @@ class DatasetColumns(str, Enum):
     IMAGE_6 = 'image_6'
     IMAGE_7 = 'image_7'
     IMAGE_TYPE = 'image_type'
-    ANSWERS = 'answers'
+    ANSWER = 'answers'
     EXPLANATION = 'explanation'
     TOPIC_DIFFICULTY = 'topic_difficulty'
     QUESTION_TYPE = 'question_type'
@@ -93,12 +93,12 @@ class DatasetColumns(str, Enum):
         
         # Add individual image columns with Image feature
         for i in range(1, 8):
-            features[f'image_{i}'] = Image(decode=False)  # decode=False to keep the path
+            features[f'image_{i}'] = Image()  # Remove decode=False to allow PIL Image objects
             
         # Add remaining features before answer images and release
         features.update({
             cls.IMAGE_TYPE: Value('string'),
-            cls.ANSWERS: Value('string'),
+            cls.ANSWER: Value('string'),
             cls.EXPLANATION: Value('string'),
             cls.TOPIC_DIFFICULTY: Value('string'),
             cls.QUESTION_TYPE: Value('string'),
@@ -109,8 +109,8 @@ class DatasetColumns(str, Enum):
         })
         
         # Add answer image columns with Image feature
-        for i in range(1, 4):
-            features[f'ans_image_{i}'] = Image(decode=False)  # decode=False to keep the path
+        for i in range(1, 7):
+            features[f'ans_image_{i}'] = Image()  # Same for answer images
             
         # Add release as the final column
         features[cls.RELEASE] = Value('string')
@@ -125,7 +125,7 @@ class DatasetColumns(str, Enum):
         """
         required_keys = {
             cls.INDEX, cls.QUESTION_ID, cls.CONTEXT, cls.QUESTION,
-            cls.IMAGE_TYPE, cls.ANSWERS, cls.EXPLANATION, cls.TOPIC_DIFFICULTY,
+            cls.IMAGE_TYPE, cls.ANSWER, cls.EXPLANATION, cls.TOPIC_DIFFICULTY,
             cls.QUESTION_TYPE, cls.SUBFIELD, cls.LANGUAGE, cls.MAIN_QUESTION_ID,
             cls.SUB_QUESTION_ID, cls.RELEASE
         }
@@ -135,7 +135,7 @@ class DatasetColumns(str, Enum):
             required_keys.add(f'image_{i}')
             
         # Add answer image columns to required keys
-        for i in range(1, 4):
+        for i in range(1, 7):
             required_keys.add(f'ans_image_{i}')
         
         missing_keys = required_keys - set(sample.keys())

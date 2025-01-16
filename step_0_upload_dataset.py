@@ -2,12 +2,13 @@ import pandas as pd
 from datasets import Dataset, DatasetDict, Image
 from huggingface_hub import HfApi
 import os
-import json
+import ast
 from pathlib import Path
 from omegaconf import OmegaConf
-from easyllm_kit.utils import get_logger 
-from typing import Optional
+from easyllm_kit.utils import get_logger
 from famma_runner.utils import find_image_file, DC, ReleaseVersion
+from io import BytesIO
+from PIL import Image
 
 logger = get_logger('dataset_maker', 'question_maker.log')
 
@@ -29,7 +30,7 @@ def validate_question_id(df):
     
     # Group by release to validate each release separately
     for release, release_df in df.groupby(DC.RELEASE):
-        logger.info(f"Validating question IDs for release: {release}")
+        logger.info(f"Validating {len(release_df)} question IDs for release: {release}")
         
         # Sort by main_question_id to check monotonicity
         release_df = release_df.sort_values([DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
@@ -60,9 +61,54 @@ def validate_question_id(df):
     logger.info("Question ID validation passed successfully")
     return True
 
-def prepare_dataset(csv_dir, image_parent_dir):
+def validate_columns(df):
+    """
+    Validate column values in the dataset.
+    
+    Checks:
+    1. TOPIC_DIFFICULTY must be in ['easy', 'medium', 'hard']
+    2. QUESTION_TYPE must be in ['open question', 'multiple-choice']
+    3. For multiple-choice questions, OPTIONS must be a valid list of strings
+    """
+    # check if all values in TOPIC_DIFFICULTY are in ['easy', 'medium', 'hard']
+    if not df[DC.TOPIC_DIFFICULTY].isin(['easy', 'medium', 'hard']).all():
+        raise ValueError(f"Invalid values in {DC.TOPIC_DIFFICULTY} column")
+    
+    # check if all values in QUESTION_TYPE are in ['open question', 'multiple-choice']
+    if not df[DC.QUESTION_TYPE].isin(['open question', 'multiple-choice']).all():
+        raise ValueError(f"Invalid values in {DC.QUESTION_TYPE} column")
+    
+    # check OPTIONS format for multiple-choice questions
+    multiple_choice_df = df[df[DC.QUESTION_TYPE] == 'multiple-choice']
+    for idx, row in multiple_choice_df.iterrows():
+        options = row[DC.OPTIONS]
+        if pd.isna(options) or not isinstance(options, str):
+            raise ValueError(f"Missing or invalid OPTIONS for multiple-choice question at index {idx}")
+        try:
+            parsed_options = ast.literal_eval(options)
+            if not isinstance(parsed_options, list) or not all(isinstance(item, str) for item in parsed_options):
+                raise ValueError(f"OPTIONS must be a list of strings at index {idx}")
+        except (ValueError, SyntaxError):
+            raise ValueError(f"Invalid format in OPTIONS at index {idx}: {options}")
+
+
+    # For open questions, OPTIONS should be empty or null
+    open_question_df = df[df[DC.QUESTION_TYPE] == 'open question']
+    if not open_question_df[DC.OPTIONS].isna().all():
+        non_null_idx = open_question_df[~open_question_df[DC.OPTIONS].isna()].index
+        raise ValueError(f"Open questions should not have OPTIONS at indices: {list(non_null_idx)}")
+    
+    return True
+
+
+def prepare_dataset(csv_dir, image_parent_dir, version):
     """
     Prepare dataset from CSV and convert it to HuggingFace format.
+    
+    Args:
+        csv_dir: Path to CSV file
+        image_parent_dir: Path to image directory
+        version: Version to use as split name
     """
     # Read CSV file
     df = pd.read_csv(csv_dir, header=0)
@@ -70,18 +116,26 @@ def prepare_dataset(csv_dir, image_parent_dir):
     # Validate question IDs
     validate_question_id(df)
     logger.info("Question IDs validated successfully")
+
+    # Validate columns
+    validate_columns(df)
+    logger.info("Columns validated successfully")
     
     # Sort DataFrame to ensure consistent ordering
     df = df.sort_values([DC.RELEASE, DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
     # Add index column
     df[DC.INDEX] = range(len(df))
     
-    image_parent_dir = Path(image_parent_dir)
-    
     def process_row(row, is_first_subquestion):
         """Process a single row, attaching images only if it's the first sub-question"""
-        # Convert options from string to dict if it exists
-        options = json.loads(row[DC.OPTIONS]) if pd.notna(row[DC.OPTIONS]) else None
+        # Convert options from string to list if it exists and question is multiple-choice
+        options = None
+        if row[DC.QUESTION_TYPE] == 'multiple-choice' and pd.notna(row[DC.OPTIONS]):
+            try:
+                options = ast.literal_eval(row[DC.OPTIONS])
+            except (ValueError, SyntaxError):
+                logger.warning(f"Invalid format in OPTIONS for question {row[DC.QUESTION_ID]}")
+                options = None
         
         # Get short release name
         release_short = ReleaseVersion.to_short_name(row[DC.RELEASE])
@@ -103,13 +157,17 @@ def prepare_dataset(csv_dir, image_parent_dir):
             if is_first_subquestion:
                 image_name = row[image_key]
                 if pd.notna(image_name):
+                    # Construct full image path by joining parent_dir + subdir + filename
+                    image_path = Path(image_parent_dir + row['question_image_parent_dir'][3:]) / image_name
                     # Try to find image with either jpg or png extension
-                    image_name = row['question_image_parent_dir'] + image_name
-                    full_path = find_image_file(image_parent_dir, image_name)
+                    full_path = find_image_file(image_path.parent, image_path.name)
                     if full_path is not None:
-                        sample[image_key] = str(full_path)
+                        # Read the image file into PIL Image
+                        img = Image.open(full_path)
+                        # Store the PIL Image object directly
+                        sample[image_key] = img
                     else:
-                        logger.warning(f"Image not found: {image_name}.[jpg|png]")
+                        logger.warning(f"Image not found: {image_path}.[jpg|png]")
                         sample[image_key] = None
                 else:
                     sample[image_key] = None
@@ -128,18 +186,22 @@ def prepare_dataset(csv_dir, image_parent_dir):
         sample[DC.SUB_QUESTION_ID] = row[DC.SUB_QUESTION_ID]
 
         # Add answer image columns - only if this is the first sub-question
-        for i in range(1, 4):
+        for i in range(1, 7):
             ans_image_key = f'ans_image_{i}'
             if is_first_subquestion:
                 image_name = row[ans_image_key]
                 if pd.notna(image_name):
-                    image_name = row['answer_image_parent_dir'] + image_name
+                    # Construct full image path by joining parent_dir + subdir + filename
+                    image_path = Path(image_parent_dir + row['ans_image_parent_dir'][3:]) / image_name
                     # Try to find image with either jpg or png extension
-                    full_path = find_image_file(image_parent_dir, image_name)
+                    full_path = find_image_file(image_path.parent, image_path.name)
                     if full_path is not None:
-                        sample[ans_image_key] = str(full_path)
+                        # Read the image file into PIL Image
+                        img = Image.open(full_path)
+                        # Store the PIL Image object directly
+                        sample[ans_image_key] = img
                     else:
-                        logger.warning(f"Answer image not found: {image_name}.[jpg|png]")
+                        logger.warning(f"Answer image not found: {image_path}.[jpg|png]")
                         sample[ans_image_key] = None
                 else:
                     sample[ans_image_key] = None
@@ -152,47 +214,60 @@ def prepare_dataset(csv_dir, image_parent_dir):
         DC.validate_sample(sample)
         return sample
 
-    # Get unique release versions
-    release_versions = df[DC.RELEASE].unique()
+    # Process all rows
+    current_main_id = None
+    data = []
     
-    # Process each release version
-    splits = {}
-    for release in release_versions:
-        release_df = df[df[DC.RELEASE] == release]
+    for _, row in df.iterrows():
+        is_first_subquestion = row[DC.MAIN_QUESTION_ID] != current_main_id
+        if is_first_subquestion:
+            current_main_id = row[DC.MAIN_QUESTION_ID]
         
-        # Process rows, tracking first sub-question for each main question
-        current_main_id = None
-        release_data = []
-        
-        for _, row in release_df.iterrows():
-            is_first_subquestion = row[DC.MAIN_QUESTION_ID] != current_main_id
-            if is_first_subquestion:
-                current_main_id = row[DC.MAIN_QUESTION_ID]
-            
-            processed_sample = process_row(row, is_first_subquestion)
-            release_data.append(processed_sample)
-        
-        # Use short name for split key
-        split_key = ReleaseVersion.to_short_name(release)
-        splits[split_key] = Dataset.from_list(release_data, features=DC.get_features())
-        print(f"Split {split_key} (from {release}): {len(release_data)} samples")
+        processed_sample = process_row(row, is_first_subquestion)
+        data.append(processed_sample)
     
-    # Create DatasetDict with all splits
+    # Create dataset with single split using the version
+    splits = {
+        version: Dataset.from_list(data, features=DC.get_features())
+    }
+    logger.info(f"Created split {version} with {len(data)} samples")
+    
+    # Create DatasetDict with the version split
     dataset_dict = DatasetDict(splits)
     
     return dataset_dict
 
-def upload_to_hub(dataset_dict, repo_name, version):
+def upload_to_hub(dataset_dict, repo_name, version, token):
     """
     Upload dataset to HuggingFace Hub
+    
+    Args:
+        dataset_dict: Dataset dictionary to upload
+        repo_name: Name of the repository on HuggingFace
+        version: Version tag for the dataset
+        token: HuggingFace API token
     """
     api = HfApi()
+    
+    # Create repository if it doesn't exist
+    try:
+        api.create_repo(
+            repo_id=repo_name,
+            repo_type="dataset",  # Specify that this is a dataset
+            private=False,
+            token=token,
+            exist_ok=True  # Don't error if repo already exists
+        )
+        logger.info(f"Created or verified repository: {repo_name}")
+    except Exception as e:
+        logger.error(f"Error creating repository: {e}")
+        raise
     
     # Push dataset to hub
     dataset_dict.push_to_hub(
         repo_id=repo_name,
-        token=os.environ.get("HF_TOKEN"),  # Make sure to set your HF_TOKEN environment variable
-        tag=version
+        token=token,
+        commit_message=f"Upload dataset version {version}"
     )
 
 def main():
@@ -201,13 +276,14 @@ def main():
     Reads configuration from make_data_config.yaml.
     """
     # Load configuration
-    config = OmegaConf.load("make_data_config.yaml")
+    config = OmegaConf.load("data_config.yaml")
     
     # Prepare dataset
     logger.info("Preparing dataset...")
     dataset_dict = prepare_dataset(
-        csv_dir=config.data.csv_path,
-        image_parent_dir=config.data.image_dir
+        csv_dir=config.data.source_csv_dir,
+        image_parent_dir=config.data.source_image_dir,
+        version=config.hf.version  # Pass version to use as split name
     )
     
     # Upload to HuggingFace Hub
@@ -219,9 +295,9 @@ def main():
         token=config.hf.token
     )
     
-    logger.info(f"Dataset uploaded successfully to {config.hf.repo_name} with tag {config.hf.version}")
+    logger.info(f"Dataset uploaded successfully to {config.hf.repo_name} with split {config.hf.version}")
     logger.info("You can now load the dataset using:")
-    logger.info(f"dataset = load_dataset('{config.hf.repo_name}', tag='{config.hf.version}')")
+    logger.info(f"dataset = load_dataset('{config.hf.repo_name}', split='{config.hf.version}')")
 
 if __name__ == "__main__":
     main()
