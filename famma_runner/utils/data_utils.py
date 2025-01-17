@@ -63,63 +63,78 @@ def format_options(options_str):
     }
 
 
-def convert_to_json_list(dataset):
+def convert_to_json_list(dataset, save_dir="./hf_data"):
     """
     Convert data in Dataset format to list format.
-    Handles PIL Image objects by converting them to base64.
+    Saves images locally and returns their paths.
+    
+    Args:
+        dataset: HuggingFace dataset
+        save_dir: Base directory to save images
     """
     json_list = []
-    for sample in dataset:
-        sample_dict = dict(sample)
-        for key, value in sample_dict.items():
+    # Create images directory if it doesn't exist
+    images_dir = os.path.join(save_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    
+    for idx, sample in enumerate(dataset):
+        sample_res = {}
+        for key, value in sample.items():
             if isinstance(value, (Image.Image, JpegImageFile, PngImageFile)):
-                # Convert any PIL Image type to base64
-                sample_dict[key] = image_to_base64(value)
-        json_list.append(sample_dict)
+                # Create a unique filename for the image
+                image_filename = f"{sample['question_id']}_{key}.jpg"
+                image_path = os.path.join(images_dir, image_filename)
+                
+                # Convert RGBA to RGB if needed
+                if value.mode == 'RGBA':
+                    value = value.convert('RGB')
+                
+                # Save the image locally
+                value.save(image_path, format="JPEG")
+                
+                # Store the relative path in the JSON
+                sample_res[key] = os.path.join("images", image_filename)
+            else:
+                sample_res[key] = value
+        json_list.append(sample_res)
     return json_list
 
 
 def download_data(hf_dir, split=None, save_dir="./hf_data"):
     """
     Download dataset from HuggingFace repo and convert to JSON files.
+    Images are saved locally in {save_dir}/images/.
     
     Args:
         hf_dir (str): HuggingFace repository name (e.g., 'weaverbirdllm/famma')
         split (str, optional): Specific split to download. If None, downloads all splits.
-        save_dir (str): Directory to save the JSON files
-        
-    Example:
-        >>> download_data('weaverbirdllm/famma', split='release_v2406')
-        >>> download_data('weaverbirdllm/famma')  # downloads all splits
+        save_dir (str): Directory to save the JSON files and images
     """
     try:
         # Create save directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
         
         if split:
-            # Download specific split
-            # hf_dir = 'mmmu/mmmu'
-            # split = 'dev'
             dataset = load_dataset(hf_dir, split=split, cache_dir=save_dir)
-            json_list = convert_to_json_list(dataset)
+            json_list = convert_to_json_list(dataset, save_dir=save_dir)
             
             # Save to JSON file
             split_path = os.path.join(save_dir, f"{split}.json")
-            save_json(split_path, json_list)
+            save_json(json_list, split_path)
             print(f"Saved {split} split to {split_path}")
             
         else:
-            # Download all splits
             dataset = load_dataset(hf_dir)
             for split_name in dataset.keys():
-                json_list = convert_to_json_list(dataset[split_name])
+                json_list = convert_to_json_list(dataset[split_name], save_dir=save_dir)
                 
                 # Save to JSON file
                 split_path = os.path.join(save_dir, f"{split_name}.json")
-                save_json(split_path, json_list)
+                save_json(json_list, split_path)
                 print(f"Saved {split_name} split to {split_path}")
         
         print(f"\nDataset downloaded and saved to {save_dir}")
+        print(f"Images are saved in {os.path.join(save_dir, 'images')}")
         return True
         
     except Exception as e:
