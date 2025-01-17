@@ -84,13 +84,66 @@ def validate_columns(df):
         options = row[DC.OPTIONS]
         if pd.isna(options) or not isinstance(options, str):
             raise ValueError(f"Missing or invalid OPTIONS for multiple-choice question at index {idx}")
+        
+        # Clean and parse options
         try:
-            parsed_options = ast.literal_eval(options)
-            if not isinstance(parsed_options, list) or not all(isinstance(item, str) for item in parsed_options):
-                raise ValueError(f"OPTIONS must be a list of strings at index {idx}")
+            # First try: direct parsing after basic cleaning
+            options_cleaned = (options
+                .replace("'", "'")  # Replace curly apostrophe
+                .replace("'", "'")  # Replace another curly apostrophe
+                .replace(""", '"')  # Replace curly quotes
+                .replace(""", '"')  # Replace another curly quotes
+            )
+            parsed_options = ast.literal_eval(options_cleaned)
+            
         except (ValueError, SyntaxError):
-            raise ValueError(f"Invalid format in OPTIONS at index {idx}: {options}")
-
+            # Second try: manual parsing
+            try:
+                # Remove brackets and split by comma, handling quotes properly
+                options_text = options.strip('[]')
+                parts = []
+                current_part = []
+                in_quotes = False
+                quote_char = None
+                
+                for char in options_text:
+                    if char in ["'", '"'] and (not quote_char or char == quote_char):
+                        in_quotes = not in_quotes
+                        quote_char = char if in_quotes else None
+                    elif char == ',' and not in_quotes:
+                        parts.append(''.join(current_part).strip())
+                        current_part = []
+                    else:
+                        current_part.append(char)
+                
+                if current_part:  # Add the last part
+                    parts.append(''.join(current_part).strip())
+                
+                # Clean each part
+                parsed_options = []
+                for part in parts:
+                    cleaned = part.strip()
+                    # Remove surrounding quotes if they match
+                    if (cleaned.startswith("'") and cleaned.endswith("'")) or \
+                       (cleaned.startswith('"') and cleaned.endswith('"')):
+                        cleaned = cleaned[1:-1]
+                    if cleaned:  # Only add non-empty strings
+                        parsed_options.append(cleaned)
+                
+                if not parsed_options:
+                    raise ValueError("No valid options found")
+                
+            except Exception as e:
+                logger.error(f"Failed to parse options at index {idx}: {options}")
+                logger.error(f"Error: {str(e)}")
+                raise ValueError(f"Invalid format in OPTIONS at index {idx}: {options}")
+        
+        # Validate parsed options
+        if not isinstance(parsed_options, list) or not all(isinstance(item, str) for item in parsed_options):
+            raise ValueError(f"OPTIONS must be a list of strings at index {idx}")
+        
+        # Store cleaned options back in the DataFrame
+        df.at[idx, DC.OPTIONS] = str(parsed_options)
 
     # For open questions, OPTIONS should be empty or null
     open_question_df = df[df[DC.QUESTION_TYPE] == 'open question']
