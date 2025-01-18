@@ -17,4 +17,4 @@ if __name__ == "__main__":
 
     runner = Runner.build_from_config(config)
 
-    runner.run()    
+    runner.run()

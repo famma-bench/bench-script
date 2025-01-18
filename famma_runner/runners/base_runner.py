@@ -1,32 +1,18 @@
-import os 
+from abc import abstractmethod
 import json
 from registrable import Registrable
-from easyllm_kit.utils import read_json, save_json
-from easyllm_kit.utils.multiprocess import run_tasks_in_parallel
-from utils.path_utils import get_cache_path
-from utils.lm_styles import LanguageModel
 
 
-class BaseRunner(Registrable):
-    def __init__(self, args, model: LanguageModel):
-        self.args = args
-        self.model = model
-        self.client_kwargs: dict[str | str] = {}
+class Runner(Registrable):
+    @staticmethod
+    def build_from_config(config):
+        runner_cls = Runner.by_name(config["runner_name"].lower())
+        return runner_cls(config)
 
-        if self.args.use_cache:
-            self.cache_path = get_cache_path(model.model_repr, args)
-            if os.path.exists(self.cache_path):
-                self.cache = read_json(self.cache_path)
-            else:
-                self.cache = {}
-        else:
-            self.cache_path = None
-            self.cache = None
-
-    def save_cache(self):
-        if self.args.use_cache:
-            save_json(self.cache, self.cache_path)
-
+    def run(self):
+        """Base run method"""
+        pass
+    
     # @abstractmethod
     def _run_single(self, prompt: str | list[dict[str, str]]) -> list[str]:
         pass
@@ -60,6 +46,7 @@ class BaseRunner(Registrable):
         return result
 
     def run_batch(self, prompts: list[str | list[dict[str, str]]]) -> list[list[str]]:
+        from easyllm_kit.utils.multiprocess import run_tasks_in_parallel
         outputs = []
         arguments = [
             (
@@ -99,25 +86,5 @@ class BaseRunner(Registrable):
                 self.cache[prompt_cache] = output  ## save the output to cache
 
         return outputs
-
-    def prompts_to_outputs(
-        self, prompts: list[str | list[dict[str, str]]]
-    ) -> list[list[str]]:
-        if self.args.use_cache:
-            outputs = []
-            batch_size = self.args.cache_batch_size
-            for i in range(0, len(prompts), batch_size):
-                batch = prompts[i : i + batch_size]
-                batch_outputs = self.run_batch(batch)
-                outputs.extend(batch_outputs)
-                self.save_cache()
-        else:
-            outputs = self.run_batch(prompts)
-        return outputs
-
-    def run_main(self, benchmark: list, format_prompt: callable) -> list[list[str]]:
-        prompts = [
-            format_prompt(problem, self.model.model_style) for problem in benchmark
-        ]
-        outputs = self.prompts_to_outputs(prompts)
-        return outputs
+    
+    

@@ -28,9 +28,9 @@ def validate_question_id(df):
     df[DC.MAIN_QUESTION_ID] = df[DC.MAIN_QUESTION_ID].astype(int)
     df[DC.SUB_QUESTION_ID] = df[DC.SUB_QUESTION_ID].astype(int)
     
-    # Group by release to validate each release separately
-    for release, release_df in df.groupby(DC.RELEASE):
-        logger.info(f"Validating {len(release_df)} question IDs for release: {release}")
+    # Group by release and language to validate each release separately
+    for (release, language), release_df in df.groupby([DC.RELEASE, DC.LANGUAGE]):
+        logger.info(f"Validating {len(release_df)} question IDs for release: {release} and language: {language}")
         
         # Sort by main_question_id to check monotonicity
         release_df = release_df.sort_values([DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
@@ -68,7 +68,9 @@ def validate_columns(df):
     Checks:
     1. TOPIC_DIFFICULTY must be in ['easy', 'medium', 'hard']
     2. QUESTION_TYPE must be in ['open question', 'multiple-choice']
-    3. For multiple-choice questions, OPTIONS must be a valid list of strings
+    3. LANGUAGE must be in ['english', 'chinese', 'french']
+    4. IMAGE_TYPE must not contain any null values
+    5. For multiple-choice questions, OPTIONS must be a valid list of strings
     """
     # check if all values in TOPIC_DIFFICULTY are in ['easy', 'medium', 'hard']
     if not df[DC.TOPIC_DIFFICULTY].isin(['easy', 'medium', 'hard']).all():
@@ -78,6 +80,14 @@ def validate_columns(df):
     if not df[DC.QUESTION_TYPE].isin(['open question', 'multiple-choice']).all():
         raise ValueError(f"Invalid values in {DC.QUESTION_TYPE} column")
     
+    # check if all values in LANGUAGE are in ['english', 'chinese', 'french']
+    if not df[DC.LANGUAGE].isin(['english', 'chinese', 'french']).all():
+        raise ValueError(f"Invalid values in {DC.LANGUAGE} column")
+    
+    # check if all values in IMAGE_TYPE are not null
+    if df[DC.IMAGE_TYPE].isna().any():
+        raise ValueError(f"Null values found in {DC.IMAGE_TYPE} column")
+
     # check OPTIONS format for multiple-choice questions
     multiple_choice_df = df[df[DC.QUESTION_TYPE] == 'multiple-choice']
     for idx, row in multiple_choice_df.iterrows():
@@ -94,7 +104,9 @@ def validate_columns(df):
                 .replace(""", '"')  # Replace curly quotes
                 .replace(""", '"')  # Replace another curly quotes
             )
-            parsed_options = ast.literal_eval(options_cleaned)
+            # make the options = ['A. xxx', 'B. xxx', 'C. xxx', 'D. xxx']
+            options_cleaned = eval(options_cleaned)  # read it as a list
+            parsed_options = [f"{chr(65 + i)}. {option.strip()}" for i, option in enumerate(options_cleaned)]
             
         except (ValueError, SyntaxError):
             # Second try: manual parsing

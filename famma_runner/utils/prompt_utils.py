@@ -1,115 +1,53 @@
-from langchain.prompts import PromptTemplate
+from easyllm_kit.utils import PromptTemplate
 
 
-class MultipleChoiceQuestionPrompt:
-    _template = """You are a highly knowledgeable financial expert. Please answer multiple-choice questions in the finance domain. You are given context, images, questions and options.
-    The questions are multilingual (either in English, Chinese, or French) and multimodal (containing images as part of the question). '<image_1>, <image_2> ...' mentioned in the text of the context or question are sequential placeholders for images, which are fed at the same time as the textual information. 
-    If no image information is provided, you must answer based solely on the given information.
-    Besides, the question may contain several sub-questions that share the same context, and the answer to each sub-question may depend on the answers to previous ones.
-    The question format is
-    
-    context: <context>
-    sub-question-1: <sub-question-1>
-    sub-question-2: <sub-question-2>
-    sub-question-3: <sub-question-3>
-    ...
+class QuestionPrompt(PromptTemplate):
+    @classmethod
+    def init(cls):
+        _template = """You are a highly knowledgeable financial expert. Please answer the questions in the finance domain. You are given context, images, questions and options.
+        The questions are multilingual (either in English, Chinese, or French) and multimodal (containing images as part of the question).  
+        
+        Question Format:
+        - Context: The given financial context.
+        - Sub-Questions: A series of related sub-questions tied to the same context and images. Later questions may depend on the answers to earlier ones. Each sub-question has a seperate question type (multiple-choice or open-ended), indicated at the beginning of the sub-question.
+        - Images: Image placeholders like '<image_1>', '<image_2>' refer to accompanying images. If images are mentioned, they will be included alongside the textual context. If no images are provided, answer based solely on the textual context.
+        
+        Answering Guidelines:
+        For each sub-question, provide:        
+        - Answer:
+            For multiple-choice questions, return the option index.
+            For open-ended questions, provide a concise and precise answer.
+        - Explanation: Provide a clear and detailed explanation (maximum 200 words) for your answer in the same language as the question.
 
-    Now consider the following question:
-    context: {context} 
-    {sub_questions}
-    
-    Please provide the chosen answer and a precise, detailed explanation of why this choice is correct. The explanation should be in the same language as the question and should not exceed 400 words.
-    Your response must be in a standard JSON format:
-    {{
-       sub-question-1: {{
-           answer-1: <answer-1>,
-           explanation-1: <explanation-1>
-       }},
-       sub-question-2: {{
-           answer-2: <answer-2>,
-           explanation-2: <explanation-2>
-       }},
-       sub-question-3: {{
-           answer-3: <answer-3>,
-           explanation-3: <explanation-3>
-       }},
-       ...
-    }}
-    Ensure that the response strictly adheres to JSON syntax without any additional content. 
-    """
+        Now consider the following question:
+        context: {{context}}
+        {{sub_questions}} 
+        
+        Your response must be in a standard JSON format and should follow this structure:
+        ```json
+        {
+        subquestion-1: {
+            answer: <answer-1>,
+            explanation: <explanation-1>
+        },
+        subquestion-2: {
+            answer: <answer-2>,
+            explanation: <explanation-2>
+        },
+        subquestion-3: {
+            answer: <answer-3>,
+            explanation: <explanation-3>
+        },
+        ...
+        }
+        ```
+        Ensure that the response strictly adheres to JSON syntax without any additional content. 
+        """
 
-    def __init__(self):
-        self.prompt = PromptTemplate(
-            input_variables=["context", "sub_questions"], template=self._template
-        )
-
-    def get_prompt(self, context="", sub_questions=[]):
-        sub_questions_str = ""
-
-        for i, sub_question in enumerate(sub_questions):
-            sub_questions_str += f"sub-question-{i + 1}: {sub_question}\n"
-
-        prompt = self.prompt.format(
-            context=context,
-            sub_questions=sub_questions_str.strip(),
-        )
-
-        return prompt
-
-
-class OpenQuestionPrompt:
-    _template = """You are a highly knowledgeable financial expert. Please answer open-ended questions in the finance domain. 
-    The questions are multilingual (either in English, Chinese, or French) and multimodal (containing images as part of the question). '<image_1>, <image_2> ...' mentioned in the text of the context or question are sequential placeholders for images, which are fed at the same time as the textual information. 
-    If no image information is provided, you must answer based solely on the given information.
-    Besides, the question may contain several sub-questions that share the same context, and the answer to each sub-question may depend on the answers to previous ones.
-    The question format is
-    
-    context: <context>
-    sub-question-1: <sub-question-1>
-    sub-question-2: <sub-question-2>
-    sub-question-3: <sub-question-3>
-    ...
-    
-    Now consider the following question:
-    context: {context} 
-    {sub_questions} 
-
-    Please provide the answer and a precise, detailed explanation. The explanation should be in the same language as the question and should not exceed 400 words.
-    Your answer must be in a standard JSON format:
-    {{
-       sub-question-1: {{
-           answer-1: "answer-1",
-           explanation-1: "explanation-1"
-       }},
-       sub-question-2: {{
-           answer-2: "answer-2",
-           explanation-2: "explanation-2"
-       }},
-       sub-question-3: {{
-           answer-3: "answer-3",
-           explanation-3: "explanation-3"
-       }},
-       ...
-    }}
-    Ensure that the response strictly adheres to JSON syntax without any additional content. 
-    """
-
-    def __init__(self):
-        self.prompt = PromptTemplate(
-            input_variables=["context", "sub_questions"], template=self._template
-        )
-
-    def get_prompt(self, context="", sub_questions=[]):
-        sub_questions_str = ""
-
-        for i, question in enumerate(sub_questions):
-            sub_questions_str += f"sub-question-{i + 1}: {question}\n"
-
-        return self.prompt.format(
-            context=context,
-            sub_questions=sub_questions_str.strip(),
-        )
-
+        return cls(
+                    template=_template,
+                    input_variables=["context", "sub_questions"]
+                )
 
 class JudgePrompt:
     _template = """You are a highly knowledgeable expert and teacher in the finance domain. 
