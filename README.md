@@ -11,7 +11,7 @@ Scripts for preparing, uploading, and evaluating the `FAMMA` (Financial Domain M
 
 `FAMMA` provides a "live" benchmark for evaluating financial analysis capabilities of LLMs. The benchmark continuously collects new questions from real-world financial scenarios, ensuring up-to-date and contamination-free evaluation. Questions are sourced from various financial domains including accounting, economics, investment, and more.
 
-### Live Benchmarking Concept
+### Live Benchmarking Co ncept
 
 The "live" nature of FAMMA means:
 1. **Expert-Sourced Questions**: New questions are continuously proposed by financial experts, ensuring they have never been made public before and reflect real-world financial analysis scenarios.

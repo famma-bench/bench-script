@@ -1,5 +1,5 @@
 import argparse
-from utils.descriptive_utils import get_dataset_statistics
+from famma_runner.utils.descriptive_utils import get_dataset_statistics
 
 if __name__ == "__main__":
     """
@@ -8,7 +8,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--data_dir", type=str,
-                        default="./data", help="The parent dir of dataset")
+                        default="./hf_data/release_v2406.json", help="The parent dir of dataset")
 
     args = parser.parse_args()
 

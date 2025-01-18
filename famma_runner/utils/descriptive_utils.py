@@ -3,7 +3,7 @@ import tiktoken
 import pandas as pd
 
 from collections import defaultdict
-from utils.data_utils import save_json, read_json
+from easyllm_kit.utils import save_json, read_json
 
 
 def get_dataset_statistics(data_dir):
@@ -13,8 +13,9 @@ def get_dataset_statistics(data_dir):
     # Initialize the dictionary for statistical data
     stats = {
         "total_count": 0,
+        "total_main_question_count": 0,
+        "unique_main_question_ids": set(),
         "language_count": defaultdict(int),
-        "split_count": defaultdict(int),
         "question_type_count": defaultdict(int),
         "image_type_count": defaultdict(int),
         "image_type_set": set(),
@@ -32,52 +33,45 @@ def get_dataset_statistics(data_dir):
         ),
     }
 
-    # Traverse directories and files
-    for root, dirs, files in os.walk(data_dir):
-        for file in files:
-            if file.endswith(".json"):
-                file_path = os.path.join(root, file)
-                data = read_json(file_path)
-                # Get the language from the directory name
-                language = os.path.basename(root)
-                # Get the split type from the file name without the extension
-                split = os.path.splitext(file)[0]
+    # read the json files in the data_dir
+    data = read_json(data_dir)
 
-                for item in data:
-                    stats["total_count"] += 1
-                    stats["language_count"][language] += 1
-                    stats["split_count"][split] += 1
-                    stats["question_type_count"][item["question_type"]] += 1
-                    stats["image_type_count"][item["image_type"]] += 1
-                    stats["image_type_set"].add(item["image_type"])
-                    stats["subfield_count"][item["subfield"]] += 1
-                    stats["subfield_set"].add(item["subfield"])
-                    stats["topic_difficulty_count"][item["topic_difficulty"]] += 1
-                    if item["explanation"]:
-                        stats["explanation_count"] += 1
-                    if item["image_2"]:
-                        stats["multiple_images_count"] += 1
+    for item in data:
+        stats["total_count"] += 1
+        if "main_question_id" in item:
+            stats["unique_main_question_ids"].add(item["main_question_id"])
+        stats["language_count"][item["language"]] += 1
+        stats["question_type_count"][item["question_type"]] += 1
+        stats["image_type_count"][item["image_type"]] += 1
+        stats["image_type_set"].add(item["image_type"])
+        stats["subfield_count"][item["subfield"]] += 1
+        stats["subfield_set"].add(item["subfield"])
+        stats["topic_difficulty_count"][item["topic_difficulty"]] += 1
+        if item["explanation"]:
+            stats["explanation_count"] += 1
+        if item["image_2"] != 'None':
+            stats["multiple_images_count"] += 1
 
-                    # Calculate the token count of content + question
-                    content_question = item["context"] + item["question"]
-                    tokenizer = tiktoken.get_encoding("cl100k_base")
-                    token_count = len(tokenizer.encode(content_question))
-                    stats["token_counts"][language]["total"] += token_count
-                    stats["token_counts"][language]["count"] += 1
-                    stats["total_token_sum"]["total"] += token_count
-                    stats["total_token_sum"]["count"] += 1
+        # Calculate the token count of content + question
+        content_question = item["context"] + item["question"]
+        tokenizer = tiktoken.get_encoding("cl100k_base")
+        token_count = len(tokenizer.encode(content_question))
+        stats["token_counts"][item["language"]]["total"] += token_count
+        stats["token_counts"][item["language"]]["count"] += 1
+        stats["total_token_sum"]["total"] += token_count
+        stats["total_token_sum"]["count"] += 1
 
-                    # Update subfield difficulty counts
-                    subfield = item["subfield"]
-                    difficulty = item["topic_difficulty"]
-                    stats["subfield_difficulty_count"][language][subfield][difficulty] += 1
+        # Update subfield difficulty counts
+        subfield = item["subfield"]
+        difficulty = item["topic_difficulty"]
+        stats["subfield_difficulty_count"][item["language"]][subfield][difficulty] += 1
 
-                    # Update language difficulty counts
-                    stats["language_difficulty_count"][language][difficulty] += 1
+        # Update language difficulty counts
+        stats["language_difficulty_count"][item["language"]][difficulty] += 1
 
-                    # Update question type difficulty counts
-                    question_type = item["question_type"]
-                    stats["question_type_difficulty_count"][question_type][difficulty] += 1
+        # Update question type difficulty counts
+        question_type = item["question_type"]
+        stats["question_type_difficulty_count"][question_type][difficulty] += 1
 
     # Calculate the average token count for each language
     for language, token_data in stats["token_counts"].items():
@@ -99,16 +93,30 @@ def get_dataset_statistics(data_dir):
     del stats["total_token_sum"]["total"]
     del stats["total_token_sum"]["count"]
 
-    # Convert set types to lists
-    stats["image_type_set"] = list(stats["image_type_set"])
-    stats["subfield_set"] = list(stats["subfield_set"])
+    # Ensure all counts are integers before saving
+    for language, subfields in stats["subfield_difficulty_count"].items():
+        for subfield, difficulties in subfields.items():
+            for difficulty, count in difficulties.items():
+                # Convert count to integer
+                stats["subfield_difficulty_count"][language][subfield][difficulty] = int(count)
+
+    for language, counts in stats["language_difficulty_count"].items():
+        for difficulty, count in counts.items():
+            stats["language_difficulty_count"][language][difficulty] = int(count)
+
+    for question_type, counts in stats["question_type_difficulty_count"].items():
+        for difficulty, count in counts.items():
+            stats["question_type_difficulty_count"][question_type][difficulty] = int(count)
+
+    # Update the total_main_question_count with the size of the set
+    stats["total_main_question_count"] = len(stats["unique_main_question_ids"])
 
     os.makedirs("statistics", exist_ok=True)
     # Path to save the statistics file
     stats_file_path = os.path.join("statistics", "summary.json")
 
     # Save the statistics to a JSON file
-    save_json(stats_file_path, stats)
+    save_json(stats, stats_file_path)
 
     # Return the statistics
     return stats

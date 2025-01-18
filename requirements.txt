@@ -1,3 +1,4 @@
 omegaconf
 easyllm_kit
 datasets
+tiktoken
