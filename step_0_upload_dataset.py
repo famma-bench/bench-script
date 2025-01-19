@@ -1,13 +1,11 @@
 import pandas as pd
 from datasets import Dataset, DatasetDict, Image
 from huggingface_hub import HfApi
-import os
 import ast
 from pathlib import Path
 from omegaconf import OmegaConf
 from easyllm_kit.utils import get_logger
 from famma_runner.utils import find_image_file, DC, ReleaseVersion
-from io import BytesIO
 from PIL import Image
 
 logger = get_logger('dataset_maker', 'question_maker.log')
@@ -178,6 +176,18 @@ def prepare_dataset(csv_dir, image_parent_dir, version):
     # Read CSV file
     df = pd.read_csv(csv_dir, header=0)
     
+    # Create a custom ordering for languages
+    language_order = {'english': 0, 'chinese': 1, 'french': 2}
+
+    # Create a new column for sorting languages
+    df['language_order'] = df[DC.LANGUAGE].map(language_order)
+
+    # Sort DataFrame with language order first
+    df = df.sort_values(['language_order', DC.RELEASE, DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
+
+    # Drop the temporary language_order column
+    df = df.drop('language_order', axis=1)
+    
     # Validate question IDs
     validate_question_id(df)
     logger.info("Question IDs validated successfully")
@@ -186,11 +196,9 @@ def prepare_dataset(csv_dir, image_parent_dir, version):
     validate_columns(df)
     logger.info("Columns validated successfully")
     
-    # Sort DataFrame to ensure consistent ordering
-    df = df.sort_values([DC.RELEASE, DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
     # Add index column
     df[DC.INDEX] = range(len(df))
-    
+
     def process_row(row, is_first_subquestion):
         """Process a single row, attaching images only if it's the first sub-question"""
         # Convert options from string to list if it exists and question is multiple-choice

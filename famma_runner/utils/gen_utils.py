@@ -55,7 +55,7 @@ def extract_choice_from_response(response, all_choices, choice_ans):
     return pred_index
 
 
-def generate_response_from_llm(model, input_prompt, images):
+def generate_response_from_llm(model, input_prompt, images, question_id_list):
     """
     Get answers for either multiple-choice or open-ended questions from the DataFrame.
     """
@@ -74,37 +74,53 @@ def generate_response_from_llm(model, input_prompt, images):
         })
 
     model_output = model.generate(msg)
-
-    output = safe_parse_response(model_output)
+    
+    output = safe_parse_response(model_output, question_id_list)
 
     return output
 
 
-def safe_parse_response(response):
+def safe_parse_response(response_text, question_id_list):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.
+    Args:
+        response_text: The text response from the model
+        question_id_list: List of question IDs to look for
+    Returns:
+        Dictionary mapping question IDs to their answers and explanations
     """
-    try:
-        return extract_json_from_text(response)
-    except (json.JSONDecodeError, TypeError):
-        # Revised regular expression to extract the data
-        pattern = r'"?sub-question-(\d+)"?:\s*\{\s*"?answer"?:\s*"([^"]*)"\s*,?\s*"?explanation"?:\s*"([^"]*)"\s*\}'
-        matches = re.findall(pattern, response)
-        # Check if matches were found and create dict
-        if matches:
-            response = {
-                f"sub-question-{match[0]}": {
-                    "answer": match[1],
-                    "explanation": match[2]
+    # First try to parse as JSON
+    response_dict = extract_json_from_text(response_text)
+    
+    if response_dict.get('result', None) == 'error parsing':
+        # If JSON parsing fails, use regex
+        parsed_response = {}
+        
+        for question_id in question_id_list:
+            # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
+            pattern = rf'"{question_id}"?\s*:\s*\{{\s*"?answer"?\s*:\s*"([^"]*)"\s*,\s*"?explanation"?\s*:\s*"([^"]*?)"\s*\}}'
+            
+            match = re.search(pattern, response_text)
+            if match:
+                answer, explanation = match.groups()
+                parsed_response[question_id] = {
+                    "answer": answer.strip(),
+                    "explanation": explanation.strip()
                 }
-                for match in matches
-            }
-            return response
-        else:
+            else:
+                logger.warning(f"Could not find match for question {question_id} in response")
+                parsed_response[question_id] = {
+                    "answer": "",
+                    "explanation": ""
+                }
+        
+        if not parsed_response:
             logger.warning(
-                "Response is not valid JSON or is malformed. Response: %s", response)
-        return {}
-
+                "Could not parse any responses. Response text: %s", response_text)
+        
+        return parsed_response
+    else:
+        return response_dict
 
 def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):
     """

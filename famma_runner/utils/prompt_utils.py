@@ -9,39 +9,37 @@ class QuestionPrompt(PromptTemplate):
         
         Question Format:
         - Context: The given financial context.
-        - Sub-Questions: A series of related sub-questions tied to the same context and images. Later questions may depend on the answers to earlier ones. Each sub-question has a seperate question type (multiple-choice or open-ended), indicated at the beginning of the sub-question.
+        - Sub_questions: A list of sub-questions, where each contains:
+        id: unique identifier for the sub-question
+        type: question type ('multiple-choice' or 'open-ended')
+        question: the actual question text
         - Images: Image placeholders like '<image_1>', '<image_2>' refer to accompanying images. If images are mentioned, they will be included alongside the textual context. If no images are provided, answer based solely on the textual context.
         
         Answering Guidelines:
-        For each sub-question, provide:        
+        For each sub_question, provide:        
         - Answer:
-            For multiple-choice questions, return the option index.
+            For multiple-choice questions, return the option index A, B, C, D, etc.
             For open-ended questions, provide a concise and precise answer.
         - Explanation: Provide a clear and detailed explanation (maximum 200 words) for your answer in the same language as the question.
-
-        Now consider the following question:
-        context: {{context}}
-        {{sub_questions}} 
         
         Your response must be in a standard JSON format and should follow this structure:
         ```json
         {
-        subquestion-1: {
-            answer: <answer-1>,
-            explanation: <explanation-1>
-        },
-        subquestion-2: {
-            answer: <answer-2>,
-            explanation: <explanation-2>
-        },
-        subquestion-3: {
-            answer: <answer-3>,
-            explanation: <explanation-3>
-        },
-        ...
+            "<question_id>": {
+                "answer": "<answer>",
+                "explanation": "<explanation>"
+            },
+            "<question_id>": {
+                "answer": "<answer>",
+                "explanation": "<explanation>"
+            },
+            ...
         }
         ```
         Ensure that the response strictly adheres to JSON syntax without any additional content. 
+        Now please answer the following question:
+        context: {{context}}
+        {{sub_questions}} 
         """
 
         return cls(
@@ -49,40 +47,49 @@ class QuestionPrompt(PromptTemplate):
                     input_variables=["context", "sub_questions"]
                 )
 
-class JudgePrompt:
-    _template = """You are a highly knowledgeable expert and teacher in the finance domain. 
-    You are reviewing a student's answers to financial questions. 
-    The questions are multilingual (either in English, Chinese, or French) and multimodal (containing images as part of the question). '<image_1>, <image_2> ...' mentioned in the text of the context or question are sequential placeholders for images, which are fed at the same time as the textual information.
-    You are given the context, the question, the student's answer and the student's explanation and the ground-truth answer. 
-    Please use the given information and refer to the ground-truth answer to determine if the student's answer is correct.
-    
-    The input information is as follows：
-    
-    context: {context}
-    question: {question}
-    student's answer: {model_answer}
-    student's explanation: {model_explanation}
-    ground-truth answer: {answer}
-    
-    If the student's answer is empty or completely nonsensical, please respond with 'unable to answer'. 
-    In other cases, please respond directly as either 'correct' or 'incorrect'.
-    """
+class JudgePrompt(PromptTemplate):
+    @classmethod
+    def init(cls):
+        _template = """You are a highly knowledgeable expert and teacher in the finance domain. 
+        You are reviewing a student's answers to financial questions. 
+        The questions are multilingual (either in English, Chinese, or French) and multimodal (containing images as part of the question). '<image_1>, <image_2> ...' mentioned in the text of the context or question are sequential placeholders for images, which are fed at the same time as the textual information.
+        You are given the context, the question, the student's answer and the student's explanation and the ground-truth answer. 
+        Please use the given information and refer to the ground-truth answer to determine if the student's answer is correct.
+        
+        Question Format:
+        {
+            "question_id": "<unique_identifier>",
+            "context": "<financial_context>",
+            "type": "<multiple-choice|open-ended>",
+            "question": "<question_text>",
+            "student_answer": "<student's_answer>",
+            "student_explanation": "<student's_explanation>",
+            "ground_truth": "<correct_answer>"
+        }
 
-    def __init__(self):
-        self.prompt = PromptTemplate(
-            input_variables=["context", "question",
-                             "model_answer", "model_explanation", "answer"],
-            template=self._template,
-        )
+        Evaluation Guidelines:
+        For multiple-choice questions:
+        Correct if student's answer matches the ground truth content, regardless of format
+        Example: If correct answer is "A. Stock market", both "A" and "Stock market" are considered correct
+        Focus on whether the student selected the right concept/answer, not the format
+        For open-ended questions:
+        Compare key concepts and accuracy of student's response with ground truth
+        Respond directly as either 'correct' or 'incorrect'.
 
-    def get_prompt(self, context="", question="", model_answer="", model_explanation="", answer=""):
-        return self.prompt.format(
-            context=context,
-            question=question,
-            model_answer=model_answer,
-            model_explanation=model_explanation,
-            answer=answer,
-        )
+        Your response must be in a standard JSON format and should follow this structure:
+        ```json
+        {
+            "<question_id>": "correct" or "incorrect"
+        }
+        ```
+        Now please evaluate the following response:
+        {{question}}
+        """
+
+        return cls(
+                    template=_template,
+                    input_variables=["question"]
+                )
 
 
 class AnalyzePrompt:

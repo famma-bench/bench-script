@@ -96,6 +96,10 @@ You can evaluate model outputs using a custom file. Format your outputs as:
 ]
 ```
 
+## ERRATA
+We maintain a list of known issues and updates in the [ERRATA.md](./ERRATA.md) file. Particularly, we document issues regarding erroneous tests and problems not amenable to autograding. We are constantly using this feedback to improve our problem selection heuristics as we update `FAMMA`.
+
+
 ## Acknowledgments
 
 The following repositories were used in developing FAMMA:

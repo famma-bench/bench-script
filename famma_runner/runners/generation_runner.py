@@ -56,49 +56,62 @@ class GenerationRunner(Runner):
         images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir)
 
         sub_questions = []
-
-        for idx, row in sub_question_set_df.iterrows():
-            question = f"subquestion {idx} - {row['question_type']} - {row['question']}"
+        question_id_list = []
+        for _, row in sub_question_set_df.iterrows():
+            question_dict = {
+                "id": row['question_id'],
+                "type": row['question_type'],
+                "question": row['question']
+            }
             
+            # Add options if it's a multiple-choice question
             if row['question_type'] == 'multiple-choice':
-                options = row['options']
-                question += f" {options}"
+                question_dict["options"] = row['options']
             
-            sub_questions.append(question)
+            sub_questions.append(question_dict)
+            question_id_list.append(row['question_id'])
 
+        # Format the prompt with the structured questions
         prompt = QuestionPrompt.init().format(
             context=context,
             sub_questions=sub_questions
         )
         
-        model_response = generate_response_from_llm(self.llm, prompt, images)
+        model_response = generate_response_from_llm(self.llm, prompt, images, question_id_list)
 
         return model_response
 
     def run(self):
+        # Create a copy of the DataFrame at the start
         dataset_df = self.dataset_df.copy()
+        
         for (main_question_id, language), group in dataset_df.groupby(['main_question_id', 'language']):
-            key = f'{main_question_id}_{language}'
+            key = f'{language}_{main_question_id}'
             if key in self.target_db:
                 continue
             try:
-                logger.info(f'start generating answers for {key}')
+                logger.info(f'start generating answers for {language} -- main_question_id: {main_question_id}')
                 model_response = self.generate_answer_for_one_main_question(group)
                 
-                # Add model response to the output
-                # iterate over group DataFrame
+                # Get the indices of the current group
+                group_indices = group.index
+                
+                # Update the DataFrame using loc
                 for idx in range(len(group)):
-                    row = group.iloc[idx]
-                    row['model_answer'] = model_response['sub-question-{}'.format(idx)]['answer']
-                    row['model_explanation'] = model_response['sub-question-{}'.format(idx)]['explanation']
+                    output_key = group.iloc[idx]['question_id']
+                    
+                    # Use loc to set values
+                    dataset_df.loc[group_indices[idx], 'model_answer'] = model_response[output_key]['answer']
+                    dataset_df.loc[group_indices[idx], 'model_explanation'] = model_response[output_key]['explanation']
+                    
                 
                 write_to_database(self.target_db_name, key, model_response)
             except Exception as e:
                 logger.error(
-                    "Error processing main_question_id %s: %s", key, str(e))
+                    "Error processing main_question_id %s: %s", main_question_id, str(e))
                 continue
         
-        # Save the DataFrame to a file or database as needed
+        # Save the DataFrame to a file
         dataset_df.to_csv('output_samples.csv', index=False)
         
         logger.info('Generation complete') 
