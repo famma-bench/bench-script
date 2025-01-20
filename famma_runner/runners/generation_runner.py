@@ -4,7 +4,7 @@ from easyllm_kit.models import LLM
 import pandas as pd
 import os
 from famma_runner.runners.base_runner import Runner
-from famma_runner.utils import collect_images_from_first_subquestion, generate_response_from_llm
+from famma_runner.utils import collect_images_from_first_subquestion, generate_response_from_llm, safe_parse_response
 from famma_runner.utils import QuestionPrompt
 
 
@@ -77,7 +77,8 @@ class GenerationRunner(Runner):
             sub_questions=sub_questions
         )
         
-        model_response = generate_response_from_llm(self.llm, prompt, images, question_id_list)
+        model_output = generate_response_from_llm(self.llm, prompt, images)
+        model_response = safe_parse_response(model_output, question_id_list)
 
         return model_response
 
@@ -93,19 +94,23 @@ class GenerationRunner(Runner):
                 logger.info(f'start generating answers for {language} -- main_question_id: {main_question_id}')
                 model_response = self.generate_answer_for_one_main_question(group)
                 
-                # Get the indices of the current group
-                group_indices = group.index
-                
-                # Update the DataFrame using loc
+                # Aggregate all subquestions with their answers into a single dictionary
+                subquestion_responses = {}
                 for idx in range(len(group)):
                     output_key = group.iloc[idx]['question_id']
                     
-                    # Use loc to set values
-                    dataset_df.loc[group_indices[idx], 'model_answer'] = model_response[output_key]['answer']
-                    dataset_df.loc[group_indices[idx], 'model_explanation'] = model_response[output_key]['explanation']
+                    # Create a JSON object with the original input data and the model response
+                    input_data_with_response = group.iloc[idx].to_dict()
+                    input_data_with_response.update({
+                        'model_answer': model_response[output_key]['answer'],
+                        'model_explanation': model_response[output_key]['explanation']
+                    })
                     
-                
-                write_to_database(self.target_db_name, key, model_response)
+                    # Store the response in the subquestion_responses dictionary
+                    subquestion_responses[output_key] = input_data_with_response
+
+                # Write the aggregated subquestion responses to the database
+                write_to_database(self.target_db_name, key, subquestion_responses)
             except Exception as e:
                 logger.error(
                     "Error processing main_question_id %s: %s", main_question_id, str(e))

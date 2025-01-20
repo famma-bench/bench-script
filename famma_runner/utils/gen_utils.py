@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import re
@@ -55,7 +54,7 @@ def extract_choice_from_response(response, all_choices, choice_ans):
     return pred_index
 
 
-def generate_response_from_llm(model, input_prompt, images, question_id_list):
+def generate_response_from_llm(model, input_prompt, images=None):
     """
     Get answers for either multiple-choice or open-ended questions from the DataFrame.
     """
@@ -65,19 +64,18 @@ def generate_response_from_llm(model, input_prompt, images, question_id_list):
         "text": input_prompt,
     }
     ]
-    for image in images:
-        msg.append({
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/jpeg;base64,{image}"
-            },
-        })
+    if images is not None:
+        for image in images:
+            msg.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{image}"
+                },
+            })
 
     model_output = model.generate(msg)
-    
-    output = safe_parse_response(model_output, question_id_list)
 
-    return output
+    return model_output
 
 
 def safe_parse_response(response_text, question_id_list):
@@ -91,15 +89,15 @@ def safe_parse_response(response_text, question_id_list):
     """
     # First try to parse as JSON
     response_dict = extract_json_from_text(response_text)
-    
+
     if response_dict.get('result', None) == 'error parsing':
         # If JSON parsing fails, use regex
         parsed_response = {}
-        
+
         for question_id in question_id_list:
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
             pattern = rf'"{question_id}"?\s*:\s*\{{\s*"?answer"?\s*:\s*"([^"]*)"\s*,\s*"?explanation"?\s*:\s*"([^"]*?)"\s*\}}'
-            
+
             match = re.search(pattern, response_text)
             if match:
                 answer, explanation = match.groups()
@@ -113,14 +111,15 @@ def safe_parse_response(response_text, question_id_list):
                     "answer": "",
                     "explanation": ""
                 }
-        
+
         if not parsed_response:
             logger.warning(
                 "Could not parse any responses. Response text: %s", response_text)
-        
+
         return parsed_response
     else:
         return response_dict
+
 
 def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):
     """

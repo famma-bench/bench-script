@@ -1,8 +1,7 @@
 from easyllm_kit.utils.io_utils import initialize_database, write_to_database
-from easyllm_kit.utils import get_logger, read_json
+from easyllm_kit.utils import get_logger, read_json, extract_json_from_text
 from easyllm_kit.models import LLM
 import pandas as pd
-import os
 from famma_runner.runners.base_runner import Runner
 from famma_runner.utils import generate_response_from_llm
 from famma_runner.utils import JudgePrompt
@@ -47,10 +46,13 @@ class EvaluationRunner(Runner):
         answers_df = pd.DataFrame(answers_data)
         gold_df = pd.DataFrame(gold_data)
         return answers_df, gold_df
+    
+    def get_gold_answer(self, question_id):
+        return self.gold_df[self.gold_df['question_id'] == question_id]['answer'].values[0]
 
     def run(self):
-        dataset_df = self.dataset_df.copy()
-        for (main_question_id, language), group in dataset_df.groupby(['main_question_id', 'language']):
+        dataset_df = self.answers_df.copy()
+        for _, group in dataset_df.groupby(['main_question_id']):
             for idx in range(len(group)):
                 row = group.iloc[idx]
                 key = row['question_id']
@@ -58,8 +60,9 @@ class EvaluationRunner(Runner):
                 if key in self.target_db:
                     continue
 
-                logger.info(f'start judging answers for {main_question_id}')
-                model_response = self.judge_answer_for_one_subquestion(row)
+                logger.info(f'start judging answers for {key}')
+                gold_answer = self.get_gold_answer(key)
+                model_response = self.judge_answer_for_one_subquestion(row, gold_answer)
                 
                 row['is_correct_by_model'] = model_response[key]
                 
@@ -73,5 +76,21 @@ class EvaluationRunner(Runner):
         logger.info('Result saved to %s in json format', self.target_db_name)
         logger.info('Result saved to %s in csv format', 'output_samples.csv')
 
-    def _run_single(self, prompt: str) -> list[str]:
-        pass
+    def judge_answer_for_one_subquestion(self, row_ans, row_gold):
+        question = {
+            'question_id': row_ans['question_id'],
+            'context': row_ans['context'],
+            'question_type': row_ans['question_type'],
+            'question': row_ans['question'] + row_ans['options'] if row_ans['question_type'] == 'multiple_choice' else row_ans['question'],
+            'student_answer': row_ans['answer'],
+            'student_explanation': row_ans['explanation'],
+            'ground_truth': row_gold['answer']
+        }
+        prompt = JudgePrompt.init().format(
+            question=question
+        )
+
+        model_response = generate_response_from_llm(self.llm, prompt)
+        model_response = extract_json_from_text(model_response)
+
+        return model_response
