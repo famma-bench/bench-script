@@ -3,8 +3,7 @@ from easyllm_kit.utils import get_logger, read_json, extract_json_from_text
 from easyllm_kit.models import LLM
 import pandas as pd
 from famma_runner.runners.base_runner import Runner
-from famma_runner.utils import generate_response_from_llm
-from famma_runner.utils import JudgePrompt
+from famma_runner.utils import generate_response_from_llm, DC, LANGUAGE_ORDER, order_by_language, JudgePrompt
 from datetime import datetime
 
 logger = get_logger('eval_runner', 'eval_runner.log')
@@ -36,23 +35,35 @@ class EvaluationRunner(Runner):
 
         return llm
 
+    @staticmethod
+    def json_to_df(json_dir):
+        data = read_json(json_dir)
+        data_list = []
+        # loop over the keys
+        for _, v in data.items():
+            # look over the values
+            for _, sub_question in v.items():
+                data_list.append(sub_question)
+        df = pd.DataFrame(data_list)    
+        order_by_language(df, LANGUAGE_ORDER, DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID, DC.LANGUAGE)
+        return df
+
     def setup_dataset(self):
         # convert dataset to DataFrame for easy processing
-        answers_data = read_json(self.data_config.data_dir)
+        answers_df = self.json_to_df(self.data_config.data_dir)
         if self.data_config.gold_dir is None or self.data_config.gold_dir == self.data_config.data_dir:
-            gold_data = answers_data.copy()
+            gold_df = answers_df.copy()
         else:
-            gold_data = read_json(self.data_config.gold_dir)
-        answers_df = pd.DataFrame(answers_data)
-        gold_df = pd.DataFrame(gold_data)
+            gold_df = self.json_to_df(self.data_config.gold_dir)
+
         return answers_df, gold_df
     
     def get_gold_answer(self, question_id):
-        return self.gold_df[self.gold_df['question_id'] == question_id]['answer'].values[0]
+        return self.gold_df[self.gold_df[DC.QUESTION_ID] == question_id][DC.ANSWER].values[0]
 
     def run(self):
         dataset_df = self.answers_df.copy()
-        for _, group in dataset_df.groupby(['main_question_id']):
+        for _, group in dataset_df.groupby(['language_order', DC.LANGUAGE, DC.MAIN_QUESTION_ID]):
             for idx in range(len(group)):
                 row = group.iloc[idx]
                 key = row['question_id']
@@ -76,15 +87,15 @@ class EvaluationRunner(Runner):
         logger.info('Result saved to %s in json format', self.target_db_name)
         logger.info('Result saved to %s in csv format', 'output_samples.csv')
 
-    def judge_answer_for_one_subquestion(self, row_ans, row_gold):
+    def judge_answer_for_one_subquestion(self, row_ans, gold_ans):
         question = {
-            'question_id': row_ans['question_id'],
-            'context': row_ans['context'],
-            'question_type': row_ans['question_type'],
-            'question': row_ans['question'] + row_ans['options'] if row_ans['question_type'] == 'multiple_choice' else row_ans['question'],
-            'student_answer': row_ans['answer'],
-            'student_explanation': row_ans['explanation'],
-            'ground_truth': row_gold['answer']
+            'question_id': row_ans[DC.QUESTION_ID],
+            'context': row_ans[DC.CONTEXT],
+            'question_type': row_ans[DC.QUESTION_TYPE],
+            'question': row_ans[DC.QUESTION] + row_ans[DC.OPTIONS] if row_ans[DC.QUESTION_TYPE] == 'multiple_choice' else row_ans[DC.QUESTION],
+            'student_answer': row_ans['model_answer'],
+            'student_explanation': row_ans['model_explanation'],
+            'ground_truth': gold_ans
         }
         prompt = JudgePrompt.init().format(
             question=question

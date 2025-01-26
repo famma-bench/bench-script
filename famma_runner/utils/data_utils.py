@@ -140,3 +140,28 @@ def download_data(hf_dir, split=None, save_dir="./hf_data"):
     except Exception as e:
         print(f"Error downloading dataset: {str(e)}")
         return False
+
+def order_by_language(df, language_order, main_question_col, sub_question_col, language_col):
+    """Prepares the dataset by sorting it based on language order and converting
+    specified columns to integers.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to be prepared.
+        language_order (dict): A dictionary mapping languages to their order.
+        main_question_col (str): The column name for main question IDs.
+        sub_question_col (str): The column name for sub question IDs.
+        language_col (str): The column name for language.
+
+    Returns:
+        pd.DataFrame: A sorted and prepared DataFrame.
+    """
+    # Create a new column for sorting languages
+    df['language_order'] = df[language_col].map(language_order)
+
+    # Convert main_question_id, sub_question_id to int
+    df[main_question_col] = df[main_question_col].astype(int)
+    df[sub_question_col] = df[sub_question_col].astype(int)
+
+    # Sort DataFrame with language order first
+    df.sort_values(['language_order', main_question_col, sub_question_col], inplace=True)
+
