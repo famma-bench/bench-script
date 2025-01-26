@@ -1,6 +1,6 @@
 # Contributors for Release v2501
 
-We are pleased to introduce the contributors behind `release_v2501`. This release is the result of the collective efforts of a team of highly skilled professionals in quantitative research and trading at top-tier institutions.
+We are pleased to introduce the contributors behind `release_v2501`. This release is the result of the collective efforts of a team of highly skilled professionals from both the financial and technology industries.
 
 ## Key Contributors
 
@@ -21,3 +21,7 @@ Our contributors are experts in their respective fields, bringing a wealth of kn
 - **Experience:** Over 10 years in Forex portfolio management at sovereign wealth funds.
 - **Role in Project:** Designed question xx for `release_v2501`.
 
+### Expert D
+- **Background:** PhD in Mathematics from Unviersity of Science and Technology of China, specializing in stochastic control and optimization.
+- **Experience:** 5 years of experience in generative AI in large tech companies.
+- **Role in Project:** Designed question xx for `release_v2501`.
