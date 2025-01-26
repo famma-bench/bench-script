@@ -143,3 +143,7 @@ class DatasetColumns(str, Enum):
             raise ValueError(f"Missing required keys: {missing_keys}")
             
         return True
+
+
+# Define the desired language order
+LANGUAGE_ORDER = {'english': 0, 'chinese': 1, 'french': 2}

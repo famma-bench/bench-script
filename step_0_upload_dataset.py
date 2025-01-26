@@ -5,7 +5,7 @@ import ast
 from pathlib import Path
 from omegaconf import OmegaConf
 from easyllm_kit.utils import get_logger
-from famma_runner.utils import find_image_file, DC, ReleaseVersion
+from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER
 from PIL import Image
 
 logger = get_logger('dataset_maker', 'question_maker.log')
@@ -176,11 +176,8 @@ def prepare_dataset(csv_dir, image_parent_dir, version):
     # Read CSV file
     df = pd.read_csv(csv_dir, header=0)
     
-    # Create a custom ordering for languages
-    language_order = {'english': 0, 'chinese': 1, 'french': 2}
-
     # Create a new column for sorting languages
-    df['language_order'] = df[DC.LANGUAGE].map(language_order)
+    df['language_order'] = df[DC.LANGUAGE].map(LANGUAGE_ORDER)
 
     # Sort DataFrame with language order first
     df = df.sort_values(['language_order', DC.RELEASE, DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])

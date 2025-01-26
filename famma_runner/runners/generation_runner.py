@@ -5,8 +5,8 @@ import pandas as pd
 import os
 from famma_runner.runners.base_runner import Runner
 from famma_runner.utils import collect_images_from_first_subquestion, generate_response_from_llm, safe_parse_response
-from famma_runner.utils import QuestionPrompt
-
+from famma_runner.utils import QuestionPrompt, LANGUAGE_ORDER, DC
+from datetime import datetime
 
 logger = get_logger('generation_runner', 'generation_runner.log')
 
@@ -24,8 +24,12 @@ class GenerationRunner(Runner):
 
         self.dataset_df = self.setup_dataset()
 
+         # filter the dataset by main_question_id
+        if self.data_config.main_question_id is not None:
+            self.dataset_df = self.dataset_df[self.dataset_df['main_question_id'] == self.data_config.main_question_id]
+
         # Initialize the DDB
-        self.target_db_name = f'{self.llm_name}_DDB'
+        self.target_db_name = f'{self.llm_name}_ans'
         self.target_db = initialize_database(output_db=self.target_db_name)
 
     def setup_model(self):
@@ -40,6 +44,16 @@ class GenerationRunner(Runner):
         # convert dataset to DataFrame for easy processing
         data = read_json(self.data_config.data_dir)
         dataset_df = pd.DataFrame(data)
+        # Create a new column for sorting languages
+        dataset_df['language_order'] = dataset_df[DC.LANGUAGE].map(LANGUAGE_ORDER)
+
+        # convert main_question_id, sub_question_id to int
+        dataset_df[DC.MAIN_QUESTION_ID] = dataset_df[DC.MAIN_QUESTION_ID].astype(int)
+        dataset_df[DC.SUB_QUESTION_ID] = dataset_df[DC.SUB_QUESTION_ID].astype(int)
+
+        # Sort DataFrame with language order first
+        dataset_df = dataset_df.sort_values(['language_order',DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID])
+
         return dataset_df
     
     def generate_answer_for_one_main_question(self, sub_question_set_df):
@@ -86,7 +100,7 @@ class GenerationRunner(Runner):
         # Create a copy of the DataFrame at the start
         dataset_df = self.dataset_df.copy()
         
-        for (main_question_id, language), group in dataset_df.groupby(['main_question_id', 'language']):
+        for (_, language, main_question_id), group in dataset_df.groupby(['language_order', DC.LANGUAGE, DC.MAIN_QUESTION_ID], observed=False):
             key = f'{language}_{main_question_id}'
             if key in self.target_db:
                 continue
