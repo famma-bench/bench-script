@@ -1,10 +1,10 @@
 config_cls_name: make_data 
 
 data:
-  source_csv_dir: ./source_data/FAMMA_v2406.csv
-  source_image_dir: ./data/source_images
+  source_csv_dir: ./source_data/FAMMA v1203 - merge.csv
+  source_image_dir: /Users/siqiao/Downloads/
 
 hf:
-  dir: weaverbirdllm/famma
+  repo_name: weaverbirdllm/famma
   version: release_v2406
-  token: xx 
+  token: xx
