@@ -24,7 +24,8 @@ class EvaluationRunner(Runner):
         self.answers_df, self.gold_df = self.setup_dataset()
 
         # Extract model name and judger name from the respective directories
-        model_name = os.path.basename(self.data_config.data_dir).split('.')[0]  # Assuming the model name is part of the file name
+        model_name = os.path.basename(self.data_config.data_dir).split('.')[
+            0]  # Assuming the model name is part of the file name
         judger_name = self.model_config.model_name
 
         # Form the target database name using the extracted names

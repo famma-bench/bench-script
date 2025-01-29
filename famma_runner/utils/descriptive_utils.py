@@ -121,24 +121,14 @@ def get_dataset_statistics(data_dir):
     # Return the statistics
     return stats
 
-def _convert_to_df(sample_score_db):
-    data_df = pd.DataFrame.from_dict(sample_score_db, orient='index')
-    return data_df
-
-
-def consolidate_result(sample_score_db):
+def evaluation_result(eval_df):
     """
     Calculates and saves evaluation metrics.
     """
-    # Initialize result dictionary
-    sample_score_df = _convert_to_df(sample_score_db)
-    # get the first row
-    model_name = sample_score_df.iloc[0]["model_name"]
-    total_count = sample_score_df.shape[0]
-    correct_count = sample_score_df[sample_score_df["is_correct"] == True].shape[0]
-    unable_to_answer_count = sample_score_df[sample_score_df["is_correct"] == "unable to answer"].shape[0]
+    total_count = eval_df.shape[0]
+    correct_count = eval_df[eval_df["is_correct"] == True].shape[0]
+    unable_to_answer_count = eval_df[eval_df["is_correct"] == "unable to answer"].shape[0]
     result_dict = {
-        "model_name": model_name,
         "total_count": total_count,
         "correct_count": correct_count,
         "unable_to_answer_count": unable_to_answer_count,
@@ -165,7 +155,6 @@ def consolidate_result(sample_score_db):
             "total_count": 0,
             "correct_count": 0,
             "accuracy_rate": 0.0,
-            "unable_to_answer_count": 0,
         })
     }
 
@@ -178,7 +167,6 @@ def consolidate_result(sample_score_db):
         "difficulty_stats": defaultdict(lambda: {
             "total_count": 0,
             "correct_count": 0,
-            "unable_to_answer_count": 0,
             "total_score": 0.0,
             "accuracy_rate": 0.0,
         })
@@ -188,7 +176,6 @@ def consolidate_result(sample_score_db):
     subfield_stats = defaultdict(lambda: {
         "total_count": 0,
         "correct_count": 0,
-        "unable_to_answer_count": 0,
         "total_score": 0.0,
         "max_score": 0,
     })
@@ -197,7 +184,6 @@ def consolidate_result(sample_score_db):
     difficulty_stats = defaultdict(lambda: {
         "total_count": 0,
         "correct_count": 0,
-        "unable_to_answer_count": 0,
         "total_score": 0.0,
         "max_score": 0,
     })

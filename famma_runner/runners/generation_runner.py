@@ -6,7 +6,6 @@ import os
 from famma_runner.runners.base_runner import Runner
 from famma_runner.utils import collect_images_from_first_subquestion, generate_response_from_llm, safe_parse_response
 from famma_runner.utils import QuestionPrompt, LANGUAGE_ORDER, DC, order_by_language
-from datetime import datetime
 
 logger = get_logger('generation_runner', 'generation_runner.log')
 
@@ -24,7 +23,7 @@ class GenerationRunner(Runner):
 
         self.dataset_df = self.setup_dataset()
 
-         # filter the dataset by main_question_id
+        # filter the dataset by main_question_id
         if self.data_config.main_question_id is not None:
             self.dataset_df = self.dataset_df[self.dataset_df['main_question_id'] == self.data_config.main_question_id]
 
@@ -48,7 +47,7 @@ class GenerationRunner(Runner):
         order_by_language(dataset_df, LANGUAGE_ORDER, DC.MAIN_QUESTION_ID, DC.SUB_QUESTION_ID, DC.LANGUAGE)
 
         return dataset_df
-    
+
     def generate_answer_for_one_main_question(self, sub_question_set_df):
         """
         Generates model answer and explanation for a subset of questions, including both multiple-choice 
@@ -70,11 +69,11 @@ class GenerationRunner(Runner):
                 "type": row['question_type'],
                 "question": row['question']
             }
-            
+
             # Add options if it's a multiple-choice question
             if row['question_type'] == 'multiple-choice':
                 question_dict["options"] = row['options']
-            
+
             sub_questions.append(question_dict)
             question_id_list.append(row['question_id'])
 
@@ -83,7 +82,7 @@ class GenerationRunner(Runner):
             context=context,
             sub_questions=sub_questions
         )
-        
+
         model_output = generate_response_from_llm(self.llm, prompt, images)
         model_response = safe_parse_response(model_output, question_id_list)
 
@@ -92,27 +91,28 @@ class GenerationRunner(Runner):
     def run(self):
         # Create a copy of the DataFrame at the start
         dataset_df = self.dataset_df.copy()
-        
-        for (_, language, main_question_id), group in dataset_df.groupby(['language_order', DC.LANGUAGE, DC.MAIN_QUESTION_ID]):
+
+        for (_, language, main_question_id), group in dataset_df.groupby(
+                ['language_order', DC.LANGUAGE, DC.MAIN_QUESTION_ID]):
             key = f'{language}_{main_question_id}'
             if key in self.target_db:
                 continue
             try:
                 logger.info(f'start generating answers for {language} -- main_question_id: {main_question_id}')
                 model_response = self.generate_answer_for_one_main_question(group)
-                
+
                 # Aggregate all subquestions with their answers into a single dictionary
                 subquestion_responses = {}
                 for idx in range(len(group)):
                     output_key = group.iloc[idx]['question_id']
-                    
+
                     # Create a JSON object with the original input data and the model response
                     input_data_with_response = group.iloc[idx].to_dict()
                     input_data_with_response.update({
                         'model_answer': model_response[output_key]['answer'],
                         'model_explanation': model_response[output_key]['explanation']
                     })
-                    
+
                     # Store the response in the subquestion_responses dictionary
                     subquestion_responses[output_key] = input_data_with_response
 
@@ -122,11 +122,11 @@ class GenerationRunner(Runner):
                 logger.error(
                     "Error processing main_question_id %s: %s", main_question_id, str(e))
                 continue
-        
+
         # Save the DataFrame to a file
         dataset_df.to_csv('output_samples.csv', index=False)
-        
-        logger.info('Generation complete') 
+
+        logger.info('Generation complete')
         logger.info('Result saved to %s in json format', self.target_db_name)
         logger.info('Result saved to %s in csv format', 'output_samples.csv')
 

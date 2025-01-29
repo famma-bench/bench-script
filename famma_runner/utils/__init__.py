@@ -5,6 +5,7 @@ from famma_runner.utils.data_const import LANGUAGE_ORDER
 from famma_runner.utils.gen_utils import collect_images_from_first_subquestion, safe_parse_response, generate_response_from_llm           
 from famma_runner.utils.prompt_utils import QuestionPrompt, JudgePrompt
 from famma_runner.utils.data_utils import order_by_language
+from famma_runner.utils.eval_utils import calculate_accuracy
 
 __all__ = ['find_image_file', 
            'DC', 
@@ -15,5 +16,6 @@ __all__ = ['find_image_file',
            'generate_response_from_llm',
            'JudgePrompt',
            'LANGUAGE_ORDER',
-           'order_by_language'
+           'order_by_language',
+           'calculate_accuracy'
            ]
