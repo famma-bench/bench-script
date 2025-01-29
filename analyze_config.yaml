@@ -1,0 +1,5 @@
+runner_name: analyzer
+
+data:
+  data_dir: ./ddb_storage/gemini-1_evaluated_by_gpt4o.json
+
