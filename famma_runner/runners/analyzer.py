@@ -37,28 +37,27 @@ class Analyzer(Runner):
         return df
 
     def run(self):
+        self.metrics['total_questions'] = len(self.dataset_df)
+        # add the total number of english questions
+        self.metrics['total_english_questions'] = len(self.dataset_df[self.dataset_df[DC.LANGUAGE] == 'english'])
+        # add the total number of chinese questions
+        self.metrics['total_chinese_questions'] = len(self.dataset_df[self.dataset_df[DC.LANGUAGE] == 'chinese'])
+        # add the total number of french questions
+        self.metrics['total_french_questions'] = len(self.dataset_df[self.dataset_df[DC.LANGUAGE] == 'french'])
         overall_acc = calculate_accuracy(self.dataset_df)
         self.metrics["overall_acc"] = overall_acc
 
         overall_acc_by_subfield = calculate_accuracy(self.dataset_df, group_by=[DC.SUBFIELD])
-        self.metrics["overall_acc_by_subfield"] = overall_acc_by_subfield.to_dict()
+        self.metrics["overall_acc_by_subfield"] = overall_acc_by_subfield
 
         # for the overall accuracy, we compute the accuracy by difficulty
         overall_acc_by_difficulty = calculate_accuracy(self.dataset_df, group_by=[DC.TOPIC_DIFFICULTY])
-        self.metrics["overall_acc_by_difficulty"] = overall_acc_by_difficulty.to_dict()
+        self.metrics["overall_acc_by_difficulty"] = overall_acc_by_difficulty
 
         # then we repeat this process for each language subset
         for language in LANGUAGE_ORDER:
             language_acc = calculate_accuracy(self.dataset_df, group_by=[DC.LANGUAGE, DC.TOPIC_DIFFICULTY])
             # convert the accuracy to a dictionary
-            # merge the language and difficulty into a single key
-            language_acc = {f"{language}_{difficulty}": acc for difficulty, acc in language_acc.items()}
             self.metrics[f"overall_acc_by_difficulty_{language}"] = language_acc
-            # we compute the accuracy by difficulty for each language
-            language_acc_by_difficulty = calculate_accuracy(self.dataset_df,
-                                                            group_by=[DC.LANGUAGE, DC.TOPIC_DIFFICULTY])
-            # merge the language and difficulty into a single key   
-            language_acc_by_difficulty = {f"{language}_{difficulty}": acc for difficulty, acc in language_acc_by_difficulty.items()}
-            self.metrics[f"overall_acc_by_difficulty_{language}"] = language_acc_by_difficulty
 
-        write_to_database(self.target_db_name, 'metrics', self.metrics)
+        write_to_database(self.target_db_name, 'metrics', convert_to_dict(self.metrics))
