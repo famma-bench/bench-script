@@ -8,7 +8,7 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--config_dir", type=str, default="./eval_config.yaml",
+    parser.add_argument("--config_dir", type=str, default="./configs/eval_config.yaml",
                         help="The dir of evaluation config file.")
 
     args = parser.parse_args()

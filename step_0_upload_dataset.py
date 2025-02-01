@@ -346,7 +346,7 @@ def main():
     Reads configuration from make_data_config.yaml.
     """
     # Load configuration
-    config = OmegaConf.load("data_config.yaml")
+    config = OmegaConf.load("configs/data_config.yaml")
     
     # Prepare dataset
     logger.info("Preparing dataset...")

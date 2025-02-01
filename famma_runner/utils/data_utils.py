@@ -11,13 +11,6 @@ from datasets import load_dataset
 from easyllm_kit.utils import save_json
 
 
-default_response = {
-    "english": "I don't know",
-    "chinese": "我不知道",
-    "french": "Je ne sais pas"
-}
-
-
 def image_to_base64(image):
     """
     Convert image to base64 format
@@ -27,6 +20,7 @@ def image_to_base64(image):
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
 
 def remove_json_format(json_str):
     json_str = json_str.strip().lstrip('```json').strip()
@@ -51,7 +45,7 @@ def format_options(options_str):
     labels = string.ascii_uppercase[:len(options)]
     # Create the options dictionary with labels as keys
     options_dict = {label: option for label,
-                    option in zip(labels, options)}
+    option in zip(labels, options)}
     # Format the options into a string with each option on a new line, prefixed by its label
     formatted_options = "\n".join(
         [f"{label}: {option}" for label, option in zip(labels, options)])
@@ -76,7 +70,7 @@ def convert_to_json_list(dataset, save_dir="./hf_data"):
     # Create images directory if it doesn't exist
     images_dir = os.path.join(save_dir, "images")
     os.makedirs(images_dir, exist_ok=True)
-    
+
     for idx, sample in enumerate(dataset):
         sample_res = {}
         for key, value in sample.items():
@@ -84,14 +78,14 @@ def convert_to_json_list(dataset, save_dir="./hf_data"):
                 # Create a unique filename for the image
                 image_filename = f"{sample['question_id']}_{key}.jpg"
                 image_path = os.path.join(images_dir, image_filename)
-                
+
                 # Convert RGBA to RGB if needed
                 if value.mode == 'RGBA':
                     value = value.convert('RGB')
-                
+
                 # Save the image locally
                 value.save(image_path, format="JPEG")
-                
+
                 # Store the relative path in the JSON
                 sample_res[key] = os.path.join("images", image_filename)
             else:
@@ -113,33 +107,34 @@ def download_data(hf_dir, split=None, save_dir="./hf_data"):
     try:
         # Create save directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
-        
+
         if split:
             dataset = load_dataset(hf_dir, split=split, cache_dir=save_dir)
             json_list = convert_to_json_list(dataset, save_dir=save_dir)
-            
+
             # Save to JSON file
             split_path = os.path.join(save_dir, f"{split}.json")
             save_json(json_list, split_path)
             print(f"Saved {split} split to {split_path}")
-            
+
         else:
             dataset = load_dataset(hf_dir)
             for split_name in dataset.keys():
                 json_list = convert_to_json_list(dataset[split_name], save_dir=save_dir)
-                
+
                 # Save to JSON file
                 split_path = os.path.join(save_dir, f"{split_name}.json")
                 save_json(json_list, split_path)
                 print(f"Saved {split_name} split to {split_path}")
-        
+
         print(f"\nDataset downloaded and saved to {save_dir}")
         print(f"Images are saved in {os.path.join(save_dir, 'images')}")
         return True
-        
+
     except Exception as e:
         print(f"Error downloading dataset: {str(e)}")
         return False
+
 
 def order_by_language(df, language_order, main_question_col, sub_question_col, language_col):
     """Prepares the dataset by sorting it based on language order and converting
@@ -164,4 +159,3 @@ def order_by_language(df, language_order, main_question_col, sub_question_col, l
 
     # Sort DataFrame with language order first
     df.sort_values(['language_order', main_question_col, sub_question_col], inplace=True)
-

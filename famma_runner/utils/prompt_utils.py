@@ -21,7 +21,8 @@ class QuestionPrompt(PromptTemplate):
             For multiple-choice questions, return the option index A, B, C, D, etc.
             For open-ended questions, provide a concise and precise answer.
         - Explanation: Provide a clear and detailed explanation (maximum 200 words) for your answer in the same language as the question.
-        
+        - Explanation Format: Write explanations in clear, natural language without using special characters or symbols that could interfere with JSON parsing (avoid \n, \t, etc.). Keep explanations concise and focused.
+
         Your response must be in a standard JSON format and should follow this structure:
         ```json
         {

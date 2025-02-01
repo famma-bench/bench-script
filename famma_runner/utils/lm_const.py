@@ -14,7 +14,7 @@ class LMStyle(Enum):
     ref: https://github.com/LiveCodeBench/LiveCodeBench/blob/main/lcb_runner/lm_styles.py
     """
     OpenAIChat = "OpenAIChat"
-    OpenAIReason = "OpenAIReason"
+    OpenAIReason =  "OpenAIReason"
     Claude = "Claude"  # Claude 1 and Claude 2
     Claude3 = "Claude3"
     Gemini = "Gemini"

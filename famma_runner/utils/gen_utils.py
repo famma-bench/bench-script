@@ -3,8 +3,6 @@ import random
 import re
 import base64
 import numpy as np
-
-from easyllm_kit.utils.io_utils import write_to_database
 from easyllm_kit.utils import get_logger, extract_json_from_text
 
 logger = get_logger('famma', 'famma.log')
@@ -58,23 +56,26 @@ def generate_response_from_llm(model, input_prompt, images=None):
     """
     Get answers for either multiple-choice or open-ended questions from the DataFrame.
     """
-    # we use litellm api for openai / claude / gemini
-    msg = [{
-        "type": "text",
-        "text": input_prompt,
-    }
-    ]
-    if images is not None:
-        for image in images:
-            msg.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{image}"
-                },
-            })
-
-    model_output = model.generate(msg)
-
+    if model.model_name in ['gpt4o', 'claude_35_sonnet', 'gemini-1.5']:
+        # we use litellm api for openai / claude / gemini
+        msg = [{
+            "type": "text",
+            "text": input_prompt,
+        }
+        ]
+        if images is not None:
+            for image in images:
+                msg.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image}"
+                    },
+                })
+        model_output = model.generate(msg)
+    elif model.model_name in ['qwen', 'qwen_vl', 'llama_vis']:
+        model_output = model.generate(input_prompt, image_dir=images, image_format='jpg')
+    else:
+        raise NotImplementedError
     return model_output
 
 
@@ -92,6 +93,7 @@ def safe_parse_response(response_text, question_id_list):
 
     if response_dict.get('result', None) == 'error parsing':
         # If JSON parsing fails, use regex
+        logger.info('Start to using regex to extract answers.')
         parsed_response = {}
 
         for question_id in question_id_list:
@@ -140,30 +142,3 @@ def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):
                     images.append(encoded_string)
 
     return images
-
-
-def save_to_local_ddb(results_df, target_db_name, key):
-    """
-    Save the current results to the local DictDatabase.
-    """
-    columns = ["model_answer", "model_extract_answer", "model_explanation", "model_name"]
-    ddb_samples = results_df[columns]
-    input_dict = ddb_samples.to_dict(orient='records')
-    write_to_database(target_db_name, key, input_dict)
-
-
-def save_output_samples(output_samples, model_name, save_dir):
-    """
-    Save output samples to CSV files.
-    """
-    folder_name = f"{model_name}_model_answers"
-    folder_path = os.path.join(save_dir, folder_name)
-    os.makedirs(folder_path, exist_ok=True)
-
-    output_file_name = f"{folder_name}.csv"
-    output_file_path = os.path.join(folder_path, output_file_name)
-
-    # Save the DataFrame to a CSV file
-    output_samples.to_csv(output_file_path, index=False,
-                          encoding='utf_8_sig', header=True)
-    logger.info("Saved output samples to %s", output_file_path)
