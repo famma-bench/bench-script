@@ -1,11 +1,18 @@
 # FAMMA Benchmark Scripts
-Scripts for preparing, uploading, and evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Question Answering) benchmark dataset.
+Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Question Answering) benchmark dataset.
 
-🏠 [Home Page](https://huggingface.co/weaverbirdllm/famma) • 💻 [Dataset](https://huggingface.co/datasets/weaverbirdllm/famma) 
+<div align="center">
+🏠 <a href="https://huggingface.co/weaverbirdllm/famma">Home Page</a> • 💻 <a href="https://huggingface.co/datasets/weaverbirdllm/famma">Dataset</a>
+</div>
 
 
+## NEWS
 
-** STILL UNDER DEVELOPMENT **
+🔥 **Latest Updates**:
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2024/01] Release of `release_v2406` dataset, now including answers and explanations with enhanced quality.
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png) [2024/06] Initial public release of `FAMMA` benchmark (based on the `release_v2406` dataset), along with our paper: [FAMMA: A Benchmark for Financial Domain Multilingual Multimodal Question Answering](https://arxiv.org/abs/2410.04526).
+
+
 
 ## Introduction
 
@@ -30,7 +37,7 @@ The "live" nature of FAMMA means:
 ## Installation
 
 ```bash
-git clone https://github.com/weaverbirdllm/bench-script.git
+git clone https://github.com/famma-bench/bench-script.git
 pip install -r requirements.txt
 ```
 
@@ -38,8 +45,8 @@ pip install -r requirements.txt
 
 FAMMA is continuously updated with new questions. We provide different versions of the dataset:
 
-* `release_v2406`: The initial release containing xxxx questions.
-* `release_v2501`: Latest release with additional questions and improvements
+* `release_v2406`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
+* `release_v2501`: The release containing 100 questions, created by invited experts. Only the questions are provided.
 
 You can specify the dataset version when downloading:
 ```bash

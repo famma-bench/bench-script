@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import re
@@ -89,7 +90,10 @@ def safe_parse_response(response_text, question_id_list):
         Dictionary mapping question IDs to their answers and explanations
     """
     # First try to parse as JSON
-    response_dict = extract_json_from_text(response_text)
+    try:
+        response_dict = json.loads(response_text)
+    except json.JSONDecodeError:
+        response_dict = extract_json_from_text(response_text)
 
     if response_dict.get('result', None) == 'error parsing':
         # If JSON parsing fails, use regex

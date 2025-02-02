@@ -57,7 +57,7 @@ def format_options(options_str):
     }
 
 
-def convert_to_json_list(dataset, save_dir="./hf_data"):
+def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release_v2406"):
     """
     Convert data in Dataset format to list format.
     Saves images locally and returns their paths.
@@ -65,10 +65,11 @@ def convert_to_json_list(dataset, save_dir="./hf_data"):
     Args:
         dataset: HuggingFace dataset
         save_dir: Base directory to save images
+        release_version: Version string to append to images folder
     """
     json_list = []
     # Create images directory if it doesn't exist
-    images_dir = os.path.join(save_dir, "images")
+    images_dir = os.path.join(save_dir, f"images_{release_version}")
     os.makedirs(images_dir, exist_ok=True)
 
     for idx, sample in enumerate(dataset):
@@ -87,7 +88,7 @@ def convert_to_json_list(dataset, save_dir="./hf_data"):
                 value.save(image_path, format="JPEG")
 
                 # Store the relative path in the JSON
-                sample_res[key] = os.path.join("images", image_filename)
+                sample_res[key] = os.path.join(f"images_{release_version}", image_filename)
             else:
                 sample_res[key] = value
         json_list.append(sample_res)
@@ -110,7 +111,7 @@ def download_data(hf_dir, split=None, save_dir="./hf_data"):
 
         if split:
             dataset = load_dataset(hf_dir, split=split, cache_dir=save_dir)
-            json_list = convert_to_json_list(dataset, save_dir=save_dir)
+            json_list = convert_to_json_list(dataset, save_dir=save_dir, release_version=split)
 
             # Save to JSON file
             split_path = os.path.join(save_dir, f"{split}.json")
@@ -120,7 +121,7 @@ def download_data(hf_dir, split=None, save_dir="./hf_data"):
         else:
             dataset = load_dataset(hf_dir)
             for split_name in dataset.keys():
-                json_list = convert_to_json_list(dataset[split_name], save_dir=save_dir)
+                json_list = convert_to_json_list(dataset[split_name], save_dir=save_dir, release_version=split_name)
 
                 # Save to JSON file
                 split_path = os.path.join(save_dir, f"{split_name}.json")

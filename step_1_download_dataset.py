@@ -17,7 +17,7 @@ def main():
     parser.add_argument(
         "--split", 
         type=str, 
-        default=None,
+        default='release_v2406',
         help="Specific split to download (e.g., 'release_v2406'). If not specified, downloads all splits."
     )
     

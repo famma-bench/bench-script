@@ -19,7 +19,7 @@ class GenerationRunner(Runner):
         self.config = config
 
         self.llm = self.setup_model()
-        self.llm_name = self.llm.model_name
+        self.llm_name = self.llm.model_config.model_full_name
 
         self.dataset_df = self.setup_dataset()
 
