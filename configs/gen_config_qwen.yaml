@@ -6,8 +6,11 @@ data:
 
 model:
   model_name: qwen_vl  # by default, we use the qwen2-vl-72b-instruct model
-  use_api: false
-  model_dir: /workspaces/data/shoppal/siqiao/models--qwen2.5-vl-72b-instruct
+  use_api: true
+  api_key: xx
+  api_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model_full_name: qwen2.5-vl-72b-instruct
+#  model_dir: /workspaces/data/shoppal/siqiao/models--qwen2.5-vl-72b-instruct
 
 generation:
   temperature: 0.0

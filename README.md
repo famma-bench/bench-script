@@ -79,15 +79,15 @@ Each sample in the dataset contains:
 - options: the specific query being asked.
 - image_1- image_7: directories of images referenced in the context or question.
 - image_type: type of the image, e.g., chart, table, screenshot.
-- answers: a concise and accurate response. (public on release v2406, non-public on the live set release v2501)
-- explanation: a detailed justification for the answer. (public on release v2406, non-public on the live set release v2501)
+- answers: a concise and accurate response. (public on `release_v2406`, non-public on the live set `release_v2501`)
+- explanation: a detailed justification for the answer. (public on `release_v2406`, non-public on the live set `release_v2501`)
 - topic_difficulty: a measure of the question's complexity based on the level of reasoning required.
 - question_type: categorized as either multiple-choice or open-ended.
 - subfield: the specific area of expertise to which the question belongs, categorized into eight subfields.
 - language: the language in which the question text is written.
-- main_question_id: a unique identifier for the question within its context; questions with the same context share the same ID.
+- main_question_id: a unique identifier under the same language subset for the question within its context; questions with the same context share the same ID.
 - sub_question_id: a unique identifier for the question within its corresponding main question.
-- ans_image_1 - ans_image_6: (public on release v2406, non-public on the live set release v2501)
+- ans_image_1 - ans_image_6: (public on `release_v2406`, non-public on the live set `release_v2501`)
 
 ## Custom Evaluation
 
