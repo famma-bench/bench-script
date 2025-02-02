@@ -2,7 +2,7 @@
 Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Question Answering) benchmark dataset.
 
 <div align="center">
-🏠 <a href="https://huggingface.co/weaverbirdllm/famma">Home Page</a> • 💻 <a href="https://huggingface.co/datasets/weaverbirdllm/famma">Dataset</a>
+🏠 <a href="https://famma-bench.github.io/famma/">Home Page</a> • 💻 <a href="https://huggingface.co/datasets/weaverbirdllm/famma">Dataset</a>
 </div>
 
 

@@ -73,8 +73,21 @@ def generate_response_from_llm(model, input_prompt, images=None):
                     },
                 })
         model_output = model.generate(msg)
-    elif model.model_name in ['qwen', 'qwen_vl', 'llama_vis']:
-        model_output = model.generate(input_prompt, image_dir=images, image_format='jpg')
+    elif model.model_name in ['qwen', 'qwen_vl']:
+        # we use openai api for qwen
+        msg = [{
+            "type": "text",
+            "text": input_prompt,
+        }
+        ]
+        if images is not None:
+            for image in images:
+                msg.append({
+                    "type": "image_url",
+                    "image_url": f"data:image/base64,{image}"
+                    })
+        model_output = model.generate(input_prompt)
+        model_output = json.loads(model_output)["choices"][0]["message"]["content"]
     else:
         raise NotImplementedError
     return model_output
