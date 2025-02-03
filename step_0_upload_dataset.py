@@ -227,6 +227,7 @@ def prepare_dataset(csv_dir, image_parent_dir, version):
             if is_first_subquestion:
                 image_name = row[image_key]
                 if pd.notna(image_name):
+                    image_name = image_name.split('.')[0]
                     # Construct full image path by joining parent_dir + subdir + filename
                     image_path = Path(image_parent_dir + row['question_image_parent_dir'][3:]) / image_name
                     # Try to find image with either jpg or png extension
@@ -261,6 +262,7 @@ def prepare_dataset(csv_dir, image_parent_dir, version):
             if is_first_subquestion:
                 image_name = row[ans_image_key]
                 if pd.notna(image_name):
+                    image_name = image_name.split('.')[0]
                     # Construct full image path by joining parent_dir + subdir + filename
                     image_path = Path(image_parent_dir + row['ans_image_parent_dir'][3:]) / image_name
                     # Try to find image with either jpg or png extension
@@ -340,9 +342,20 @@ def upload_to_hub(dataset_dict, repo_name, version, token):
         commit_message=f"Upload dataset version {version}"
     )
 
+def save_dataset_locally(dataset_dict, local_path):
+    """
+    Save dataset locally to the specified path.
+    
+    Args:
+        dataset_dict: Dataset dictionary to save
+        local_path: Path to save the dataset locally
+    """
+    dataset_dict.save_to_disk(local_path)
+    logger.info(f"Dataset saved locally at {local_path}")
+
 def main():
     """
-    Main function to prepare and upload dataset to HuggingFace Hub.
+    Main function to prepare and upload dataset to HuggingFace Hub or save locally.
     Reads configuration from make_data_config.yaml.
     """
     # Load configuration
@@ -356,18 +369,20 @@ def main():
         version=config.hf.version  # Pass version to use as split name
     )
     
-    # Upload to HuggingFace Hub
-    logger.info("Uploading to HuggingFace Hub...")
-    upload_to_hub(
-        dataset_dict=dataset_dict,
-        repo_name=config.hf.repo_name,
-        version=config.hf.version,
-        token=config.hf.token
-    )
+    # Check if local caching is enabled
+    if config.data.local_cache:
+        save_dataset_locally(dataset_dict, config.data.local_cache_dir)
+    else:
+        # Upload to HuggingFace Hub
+        logger.info("Uploading to HuggingFace Hub...")
+        upload_to_hub(
+            dataset_dict=dataset_dict,
+            repo_name=config.hf.repo_name,
+            version=config.hf.version,
+            token=config.hf.token
+        )
     
-    logger.info(f"Dataset uploaded successfully to {config.hf.repo_name} with split {config.hf.version}")
-    logger.info("You can now load the dataset using:")
-    logger.info(f"dataset = load_dataset('{config.hf.repo_name}', split='{config.hf.version}')")
+    logger.info(f"Dataset process completed. Check {config.hf.repo_name} or {config.data.local_cache_dir} for results.")
 
 if __name__ == "__main__":
     main()
