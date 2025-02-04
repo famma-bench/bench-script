@@ -1,10 +1,13 @@
 config_cls_name: make_data 
 
 data:
-  source_csv_dir: ./source_data/FAMMA v1203 - merge.csv
+#  source_csv_dir: ./source_data/FAMMA v1203 - merge.csv
+  source_csv_dir: [{version: release_v2501, path: './source_data/FAMMA Live - live_2501.csv'},
+  {version: release_v2406, path: './source_data/FAMMA v1203 - merge.csv'}]
   source_image_dir: /Users/siqiao/Downloads/
-
+  local_cache_dir: ./cache
+  local_cache: false
 hf:
   repo_name: weaverbirdllm/famma
-  version: release_v2406
+  version: 2.0
   token: xx
