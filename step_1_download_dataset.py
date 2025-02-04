@@ -10,14 +10,15 @@ def main():
     parser.add_argument(
         "--hf_dir", 
         type=str, 
-        default="weaverbirdllm/famma",
+        # default="weaverbirdllm/famma",
+        default="./cache/release_v2501",
         help="The HuggingFace repository name"
     )
     
     parser.add_argument(
         "--split", 
         type=str, 
-        default='release_v2406',
+        default='release_v2501',
         help="Specific split to download (e.g., 'release_v2406'). If not specified, downloads all splits."
     )
     
@@ -28,12 +29,20 @@ def main():
         help="Directory to save the downloaded JSON files"
     )
     
+    parser.add_argument(
+        "--from_local", 
+        type=bool, 
+        default=True,
+        help="If True, load from local cache instead of HuggingFace"
+    )
+    
     args = parser.parse_args()
     
     success = download_data(
         hf_dir=args.hf_dir,
         split=args.split,
-        save_dir=args.save_dir
+        save_dir=args.save_dir,
+        from_local=args.from_local
     )
     
     if success:

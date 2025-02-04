@@ -2,35 +2,50 @@
 Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Question Answering) benchmark dataset.
 
 <div align="center">
-🏠 <a href="https://famma-bench.github.io/famma/">Home Page</a> • 💻 <a href="https://huggingface.co/datasets/weaverbirdllm/famma">Dataset</a>
+<a href="https://famma-bench.github.io/famma/"><img alt="Home Page" src="https://img.shields.io/badge/🌐-Home_Page-blue"></a> • <a href="https://huggingface.co/datasets/weaverbirdllm/famma"><img alt="Hugging Face" src="https://img.shields.io/badge/🤗-Dataset-ffce44?logo=huggingface"></a>
+</div>
+
+
+
+
+<div align="center">
+<a href="https://github.com/famma-bench/bench-script">
+    <img alt="Code License" src="https://img.shields.io/badge/license-Apache-000000.svg?&color=f5de53">
+  </a>
+  <a href="commit">
+    <img alt="Last Commit" src="https://img.shields.io/github/last-commit/famma-bench/bench-script">
+  </a>
+  <a href="https://github.com/famma-bench/bench-script/issues">
+  <img alt="Open Issues" src="https://img.shields.io/github/issues-raw/famma-bench/bench-script" />
+</a>
 </div>
 
 
 ## NEWS
 
 🔥 **Latest Updates**:
-- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2024/01] Release of `release_v2406` dataset, now including answers and explanations with enhanced quality.
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/02] Release of `release_v2501` dataset.
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/01] Release of `release_v2406` dataset, now including answers and explanations with enhanced quality.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png) [2024/06] Initial public release of `FAMMA` benchmark (based on the `release_v2406` dataset), along with our paper: [FAMMA: A Benchmark for Financial Domain Multilingual Multimodal Question Answering](https://arxiv.org/abs/2410.04526).
 
 
 
 ## Introduction
 
-`FAMMA` provides a "live" benchmark for evaluating financial analysis capabilities of LLMs. The benchmark continuously collects new questions from real-world financial scenarios, ensuring up-to-date and contamination-free evaluation. Questions are sourced from various financial domains including accounting, economics, investment, and more.
+`FAMMA` is a multi-modal financial Q&A benchmark dataset. The questions encompass three heterogeneous image types - tables, charts and text & math screenshots - and span eight subfields in finance, comprehensively covering topics across major asset classes. Additionally, all the questions are categorized by three difficulty levels — easy, medium, and hard - and are available in three languages — English, Chinese, and French. Furthermore, the questions are divided into two types: multiple-choice and open questions.
 
-### Live Benchmarking Co ncept
+
+
+### Live Benchmarking Concept
+
+In addition to the baseline dataset (`release_v2406` that contains 1935 questions), `FAMMA` provides a "live" benchmark for evaluating financial analysis capabilities of LLMs. The benchmark continuously collects new questions from real-world financial professionals, ensuring up-to-date and contamination-free evaluation. 
 
 The "live" nature of FAMMA means:
-1. **Expert-Sourced Questions**: New questions are continuously proposed by financial experts, ensuring they have never been made public before and reflect real-world financial analysis scenarios.
-2. **Contamination Prevention**: Questions in the live set (`release_v2501`) have non-public answers and explanations.
+1. **Expert-Sourced Questions**: New questions are continuously proposed by financial experts, ensuring they have never been made public before and reflect real-world financial analysis scenarios. See [contributors](https://github.com/famma-bench/bench-script/blob/main/contributors.md).
+2. **Contamination Prevention**: Questions in the live set (at the moment `release_v2501`) have non-public answers and explanations.
 3. **Time-Based Evaluation**: Models can be evaluated on questions from specific time periods.
 4. **Domain Coverage**: Questions span across different financial topics and complexity levels, curated by domain experts.
 
-`FAMMA` is a multi-modal financial Q&A benchmark dataset that includes:
-- Questions in multiple languages (English, Chinese and French.)
-- Financial charts and diagrams
-- Multiple choice and open-ended questions
-- Detailed explanations and answers
 
 ## Setup
 

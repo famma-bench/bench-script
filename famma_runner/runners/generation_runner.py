@@ -28,7 +28,8 @@ class GenerationRunner(Runner):
             self.dataset_df = self.dataset_df[self.dataset_df['main_question_id'] == self.data_config.main_question_id]
 
         # Initialize the DDB
-        self.target_db_name = f'{self.llm_name}_ans'
+        release_version = self.data_config.data_dir.split('/')[-1].split('.')[0]
+        self.target_db_name = f'{self.llm_name}_ans_{release_version}'
         self.target_db = initialize_database(output_db=self.target_db_name)
 
     def setup_model(self):

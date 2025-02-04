@@ -2,3 +2,4 @@ omegaconf
 easyllm_kit
 datasets
 tiktoken
+dictdatabase

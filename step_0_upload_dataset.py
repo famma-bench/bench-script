@@ -7,6 +7,7 @@ from omegaconf import OmegaConf
 from easyllm_kit.utils import get_logger
 from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER
 from PIL import Image
+import os
 
 logger = get_logger('dataset_maker', 'question_maker.log')
 
@@ -164,17 +165,17 @@ def validate_columns(df):
     return True
 
 
-def prepare_dataset(csv_dir, image_parent_dir, version):
+def prepare_dataset(csv_path, image_parent_dir, version):
     """
     Prepare dataset from CSV and convert it to HuggingFace format.
     
     Args:
-        csv_dir: Path to CSV file
+        csv_path: Path to CSV file
         image_parent_dir: Path to image directory
         version: Version to use as split name
     """
     # Read CSV file
-    df = pd.read_csv(csv_dir, header=0)
+    df = pd.read_csv(csv_path, header=0)
     
     # Create a new column for sorting languages
     df['language_order'] = df[DC.LANGUAGE].map(LANGUAGE_ORDER)
@@ -325,17 +326,17 @@ def upload_to_hub(dataset_dict, repo_name, version, token):
     try:
         api.create_repo(
             repo_id=repo_name,
-            repo_type="dataset",  # Specify that this is a dataset
+            repo_type="dataset",
             private=False,
             token=token,
-            exist_ok=True  # Don't error if repo already exists
+            exist_ok=True
         )
         logger.info(f"Created or verified repository: {repo_name}")
     except Exception as e:
         logger.error(f"Error creating repository: {e}")
         raise
     
-    # Push dataset to hub
+    # Push the dataset to the hub
     dataset_dict.push_to_hub(
         repo_id=repo_name,
         token=token,
@@ -356,18 +357,28 @@ def save_dataset_locally(dataset_dict, local_path):
 def main():
     """
     Main function to prepare and upload dataset to HuggingFace Hub or save locally.
-    Reads configuration from make_data_config.yaml.
+    Reads configuration from data_config.yaml.
     """
     # Load configuration
     config = OmegaConf.load("configs/data_config.yaml")
     
-    # Prepare dataset
-    logger.info("Preparing dataset...")
-    dataset_dict = prepare_dataset(
-        csv_dir=config.data.source_csv_dir,
-        image_parent_dir=config.data.source_image_dir,
-        version=config.hf.version  # Pass version to use as split name
-    )
+    # Initialize DatasetDict
+    dataset_dict = DatasetDict()
+    
+    # Process each file in source_csv_dir
+    for entry in config.data.source_csv_dir:
+        version = entry['version']
+        csv_path = entry['path']
+        
+        logger.info(f"Preparing dataset for version: {version}")
+        dataset = prepare_dataset(
+            csv_path=csv_path,
+            image_parent_dir=config.data.source_image_dir,
+            version=version
+        )
+        
+        # Add to DatasetDict with version as split name
+        dataset_dict[version] = dataset[version]
     
     # Check if local caching is enabled
     if config.data.local_cache:

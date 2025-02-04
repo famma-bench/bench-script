@@ -95,7 +95,7 @@ def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release
     return json_list
 
 
-def download_data(hf_dir, split=None, save_dir="./hf_data"):
+def download_data(hf_dir, split=None, save_dir="./hf_data", from_local=False):
     """
     Download dataset from HuggingFace repo and convert to JSON files.
     Images are saved locally in {save_dir}/images/.
@@ -104,13 +104,20 @@ def download_data(hf_dir, split=None, save_dir="./hf_data"):
         hf_dir (str): HuggingFace repository name (e.g., 'weaverbirdllm/famma')
         split (str, optional): Specific split to download. If None, downloads all splits.
         save_dir (str): Directory to save the JSON files and images
+        from_local (bool): If True, load from local cache instead of HuggingFace
     """
     try:
         # Create save directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
 
         if split:
-            dataset = load_dataset(hf_dir, split=split, cache_dir=save_dir)
+            if from_local:
+                from datasets import load_from_disk
+                # Load from local cache
+                dataset = load_from_disk(hf_dir)
+            else:
+                # Load from HuggingFace
+                dataset = load_dataset(hf_dir, split=split, cache_dir=save_dir)
             json_list = convert_to_json_list(dataset, save_dir=save_dir, release_version=split)
 
             # Save to JSON file
@@ -129,7 +136,7 @@ def download_data(hf_dir, split=None, save_dir="./hf_data"):
                 print(f"Saved {split_name} split to {split_path}")
 
         print(f"\nDataset downloaded and saved to {save_dir}")
-        print(f"Images are saved in {os.path.join(save_dir, 'images')}")
+        print(f"Images are saved in {os.path.join(save_dir, f'images_{split}')}")
         return True
 
     except Exception as e:
