@@ -35,7 +35,6 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 `FAMMA` is a multi-modal financial Q&A benchmark dataset. The questions encompass three heterogeneous image types - tables, charts and text & math screenshots - and span eight subfields in finance, comprehensively covering topics across major asset classes. Additionally, all the questions are categorized by three difficulty levels — easy, medium, and hard - and are available in three languages — English, Chinese, and French. Furthermore, the questions are divided into two types: multiple-choice and open questions.
 
 
-
 ### Live Benchmarking Concept
 
 In addition to the baseline dataset (`release_v2406` that contains 1935 questions), `FAMMA` provides a "live" benchmark for evaluating financial analysis capabilities of LLMs. The benchmark continuously collects new questions from real-world financial professionals, ensuring up-to-date and contamination-free evaluation. 
