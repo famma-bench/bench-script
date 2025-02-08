@@ -54,10 +54,19 @@ class Analyzer(Runner):
         overall_acc_by_difficulty = calculate_accuracy(self.dataset_df, group_by=[DC.TOPIC_DIFFICULTY])
         self.metrics["overall_acc_by_difficulty"] = overall_acc_by_difficulty
 
+        # Calculate overall accuracy by language
+        overall_acc_by_language = calculate_accuracy(self.dataset_df, group_by=[DC.LANGUAGE])
+        self.metrics["overall_acc_by_language"] = overall_acc_by_language
+
         # then we repeat this process for each language subset
         for language in LANGUAGE_ORDER:
-            language_acc = calculate_accuracy(self.dataset_df, group_by=[DC.LANGUAGE, DC.TOPIC_DIFFICULTY])
-            # convert the accuracy to a dictionary
+            # Filter the dataset for the current language
+            language_df = self.dataset_df[self.dataset_df[DC.LANGUAGE] == language]
+            
+            # Calculate accuracy for the filtered dataset
+            language_acc = calculate_accuracy(language_df, group_by=[DC.TOPIC_DIFFICULTY])
+            
+            # Convert the accuracy to a dictionary
             self.metrics[f"overall_acc_by_difficulty_{language}"] = language_acc
 
         write_to_database(self.target_db_name, 'metrics', convert_to_dict(self.metrics))
