@@ -21,6 +21,7 @@ class Analyzer(Runner):
 
         self.dataset_df = self.setup_dataset()
         self.metrics = {}
+        self.correct_question_ids = {}
 
     def setup_dataset(self):
         # Load the dataset
@@ -38,35 +39,36 @@ class Analyzer(Runner):
 
     def run(self):
         self.metrics['total_questions'] = len(self.dataset_df)
-        # add the total number of english questions
         self.metrics['total_english_questions'] = len(self.dataset_df[self.dataset_df[DC.LANGUAGE] == 'english'])
-        # add the total number of chinese questions
         self.metrics['total_chinese_questions'] = len(self.dataset_df[self.dataset_df[DC.LANGUAGE] == 'chinese'])
-        # add the total number of french questions
         self.metrics['total_french_questions'] = len(self.dataset_df[self.dataset_df[DC.LANGUAGE] == 'french'])
+        
         overall_acc = calculate_accuracy(self.dataset_df)
         self.metrics["overall_acc"] = overall_acc
 
         overall_acc_by_subfield = calculate_accuracy(self.dataset_df, group_by=[DC.SUBFIELD])
         self.metrics["overall_acc_by_subfield"] = overall_acc_by_subfield
 
-        # for the overall accuracy, we compute the accuracy by difficulty
         overall_acc_by_difficulty = calculate_accuracy(self.dataset_df, group_by=[DC.TOPIC_DIFFICULTY])
         self.metrics["overall_acc_by_difficulty"] = overall_acc_by_difficulty
 
-        # Calculate overall accuracy by language
         overall_acc_by_language = calculate_accuracy(self.dataset_df, group_by=[DC.LANGUAGE])
         self.metrics["overall_acc_by_language"] = overall_acc_by_language
 
-        # then we repeat this process for each language subset
+        self.correct_question_ids = {}
+
         for language in LANGUAGE_ORDER:
-            # Filter the dataset for the current language
             language_df = self.dataset_df[self.dataset_df[DC.LANGUAGE] == language]
             
-            # Calculate accuracy for the filtered dataset
             language_acc = calculate_accuracy(language_df, group_by=[DC.TOPIC_DIFFICULTY])
-            
-            # Convert the accuracy to a dictionary
             self.metrics[f"overall_acc_by_difficulty_{language}"] = language_acc
+            
+            for difficulty in language_df[DC.TOPIC_DIFFICULTY].unique():
+                difficulty_df = language_df[language_df[DC.TOPIC_DIFFICULTY] == difficulty]
+                correct_ids = difficulty_df[difficulty_df['is_correct_by_model'] == 1][DC.QUESTION_ID].tolist()
+                self.correct_question_ids[f"{language}_{difficulty}"] = correct_ids
+
+        # Save correct_question_ids into metrics
+        self.metrics["correct_question_ids"] = self.correct_question_ids
 
         write_to_database(self.target_db_name, 'metrics', convert_to_dict(self.metrics))
