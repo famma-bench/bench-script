@@ -36,6 +36,10 @@ class GenerationRunner(Runner):
         # Build the LLM model
         llm_config = {'model_config': self.config.get('model', None),
                       'generation_config': self.config.get('generation', None), }
+        
+        # If using custom model, load it from custom_llm.py
+        if self.model_config.model_name == "custom_llm":
+            from custom_llm import MyCustomModel
         llm = LLM.build_from_config(llm_config)
 
         return llm
