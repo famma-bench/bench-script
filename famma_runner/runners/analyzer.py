@@ -14,7 +14,7 @@ class Analyzer(Runner):
         self.data_config = config["data"]
         self.config = config
 
-        to_analyze_db_name = self.data_config.data_dir.split("/")[-1].split(".")[0]
+        to_analyze_db_name = self.data_config.model_name_to_eval
         # Form the target database name using the extracted names
         self.target_db_name = f'{to_analyze_db_name}_result'
         self.target_db = initialize_database(output_db=self.target_db_name)

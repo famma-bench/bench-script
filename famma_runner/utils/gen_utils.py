@@ -115,7 +115,7 @@ def safe_parse_response(response_text, question_id_list):
 
         for question_id in question_id_list:
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
-            pattern = rf'"{question_id}"\s*:\s*\{{\s*"answer"\s*:\s*"\(([^"]*)\)"\s*,\s*"explanation"\s*:\s*"([^"]*?)"\s*\}}'
+            pattern = rf'"{question_id}"\s*:\s*\{{\s*"answer"\s*:\s*"(.*?)"\s*,\s*"explanation"\s*:\s*"(.*?)"\s*\}}'
 
             match = re.search(pattern, response_text)
             if match:
