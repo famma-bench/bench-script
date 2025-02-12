@@ -1,5 +1,5 @@
 runner_name: analyzer
 
 data:
-  data_dir: ./ddb_storage/gpt4o_ans_evaluated_by_gpt4o.json
-
+  data_dir: ./ddb_storage/gemini-2.0-flash-exp_evaluated_by_gpt4o.json
+  model_name_to_eval: gemini-2.0-flash-exp
