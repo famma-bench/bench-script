@@ -64,6 +64,7 @@ class GenerationRunner(Runner):
         # Collect images from the first sub-question
         # parent_dir is the parent directory of the dataset - self.data_config.data_dir
         parent_dir = os.path.dirname(self.data_config.data_dir)
+
         images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir)
 
         sub_questions = []
@@ -87,7 +88,7 @@ class GenerationRunner(Runner):
             context=context,
             sub_questions=sub_questions
         )
-
+        
         model_output = generate_response_from_llm(self.llm, prompt, images)
         model_response = safe_parse_response(model_output, question_id_list)
 
