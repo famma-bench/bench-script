@@ -64,7 +64,8 @@ class GenerationRunner(Runner):
         # Collect images from the first sub-question
         # parent_dir is the parent directory of the dataset - self.data_config.data_dir
         parent_dir = os.path.dirname(self.data_config.data_dir)
-        images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir)
+        model = self.llm.model_config.model_name
+        images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir, model_name=model)
 
         sub_questions = []
         question_id_list = []
@@ -89,7 +90,7 @@ class GenerationRunner(Runner):
         )
 
         model_output = generate_response_from_llm(self.llm, prompt, images)
-        model_response = safe_parse_response(model_output, question_id_list)
+        model_response = safe_parse_response(model_output, question_id_list,model_name = model)
 
         return model_response
 
@@ -115,7 +116,8 @@ class GenerationRunner(Runner):
                     input_data_with_response = group.iloc[idx].to_dict()
                     input_data_with_response.update({
                         'model_answer': model_response[output_key]['answer'],
-                        'model_explanation': model_response[output_key]['explanation']
+                        'model_explanation': model_response[output_key]['explanation'],
+                        'model_reasoning': model_response['reasoning']
                     })
 
                     # Store the response in the subquestion_responses dictionary

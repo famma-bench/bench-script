@@ -1,0 +1,10 @@
+# 自动生成的依赖列表
+Pillow
+datasets
+huggingface_hub
+numpy
+omegaconf
+pandas
+tiktoken
+tqdm
+

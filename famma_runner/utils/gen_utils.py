@@ -78,22 +78,24 @@ def generate_response_from_llm(model, input_prompt, images=None):
         msg = [{
             "type": "text",
             "text": input_prompt,
-        }
-        ]
+        }]
         if images is not None:
             for image in images:
                 msg.append({
                     "type": "image_url",
                     "image_url": f"data:image/base64,{image}"
-                    })
-        model_output = model.generate(input_prompt)
+                })
+        model_output = model.generate(msg)
         model_output = json.loads(model_output)["choices"][0]["message"]["content"]
+    elif model.model_name in ['custom_llm']:
+        images = "\n".join(images)
+        model_output = model.generate(input_prompt + "\n" + images)
     else:
         raise NotImplementedError
     return model_output
 
 
-def safe_parse_response(response_text, question_id_list):
+def safe_parse_response(response_text_all, question_id_list,model_name):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.
     Args:
@@ -103,10 +105,19 @@ def safe_parse_response(response_text, question_id_list):
         Dictionary mapping question IDs to their answers and explanations
     """
     # First try to parse as JSON
+    if model_name in ['custom_llm']: # TODO:逻辑关系不对
+        response_dict_all =json.loads(response_text_all) # TODO:对于r1，这里是custum_model，先load进所有内容，response_text
+        response_text = response_dict_all['content']
+        reasoning_text = response_dict_all['reasoning']
+    else:
+        response_text = response_text_all
+        reasoning_text = ""
+
     try:
         response_dict = json.loads(response_text)
     except json.JSONDecodeError:
         response_dict = extract_json_from_text(response_text)
+        response_dict['reasoning'] = reasoning_text
 
     if response_dict.get('result', None) == 'error parsing':
         # If JSON parsing fails, use regex
@@ -140,7 +151,7 @@ def safe_parse_response(response_text, question_id_list):
         return response_dict
 
 
-def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):
+def collect_images_from_first_subquestion(sub_question_set_df, parent_dir, model_name):
     """
     Collects unique images from the first sub-question in the question set and returns them as a list.
     """
@@ -154,8 +165,18 @@ def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):
             if first_row.get(image_key) is not None and first_row[image_key] != 'None':
                 image_dir = os.path.join(parent_dir, first_row[image_key])
                 # encode image to base64
-                with open(image_dir, 'rb') as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                    images.append(encoded_string)
-
+                if model_name in ['custom_llm']:#TODO:model_name,custom_llm,逻辑关系不对
+                    ocr_text = paddle_ocr(image_dir)
+                    images.append(ocr_text)
+                else:
+                    with open(image_dir, 'rb') as image_file:
+                        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                        images.append(encoded_string)
     return images
+
+#新增OCR处理函数
+from paddleocr import PaddleOCR
+def paddle_ocr(img_path):
+    ocr_model = PaddleOCR(show_log=False)
+    result = ocr_model.ocr(img_path)
+    return '\n'.join([line[1][0] for res in result for line in res])
