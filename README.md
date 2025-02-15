@@ -46,15 +46,6 @@ The "live" nature of FAMMA means:
 4. **Domain Coverage**: Questions span across different financial topics and complexity levels, curated by domain experts.
 
 
-## Setup
-
-## Installation
-
-```bash
-git clone https://github.com/famma-bench/bench-script.git
-pip install -r requirements.txt
-```
-
 ## Dataset Versions
 
 FAMMA is continuously updated with new questions. We provide different versions of the dataset:
@@ -62,19 +53,29 @@ FAMMA is continuously updated with new questions. We provide different versions 
 * `release_v2406`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
 * `release_v2501`: The release containing 100 questions, created by invited experts. Only the questions are provided.
 
-You can specify the dataset version when downloading:
-```bash
-python step_1_download_dataset.py --hf_dir "weaverbirdllm/famma" --split "release_v2406"
-```
+You can specify the dataset version when downloading, see [Downloading Dataset](#downloading-dataset) for more details.
 
 ## Usage
 
+
+### Installation
+
+Clone the repository and install the dependencies:
+```bash
+git clone https://github.com/famma-bench/bench-script.git
+pip install -r requirements.txt
+```
+
 ### Downloading Dataset
+
+
+To download the dataset, run the following command:
+
 
 ```bash
 python step_1_download_dataset.py \
     --hf_dir "weaverbirdllm/famma" \
-    --split "release_v2406" \
+    --split "release_v2406" \ # or "release_v2501" or None to download the live set
     --save_dir "./hf_data"
 ```
 
@@ -103,19 +104,13 @@ Each sample in the dataset contains:
 - sub_question_id: a unique identifier for the question within its corresponding main question.
 - ans_image_1 - ans_image_6: (public on `release_v2406`, non-public on the live set `release_v2501`)
 
-## Custom Evaluation
+## Custom LLM Evaluation
 
-You can evaluate model outputs using a custom file. Format your outputs as:
-```json
-[
-    {
-        "question_id": "en_1_1_v2406",
-        "answer": "B",
-        "explanation": "Based on the chart..."
-    },
-    ...
-]
-```
+One can customized a LLM and evaluate it on the `FAMMA` dataset. It involves two steps:
+1. Define a `generate` function for the LLM to generate the answer and explanation. See [custom_llm.py](./custom_llm.py) for more details.
+2. Define a yaml config for the LLM to load the model. See [custom_gen.yaml](./configs/custom_gen.yaml) for more details.
+
+Then the evaluation can be done with the same script (except specify the config file) as the default one.
 
 ## ERRATA
 We maintain a list of known issues and updates in the [ERRATA.md](./ERRATA.md) file. Particularly, we document issues regarding erroneous tests and problems not amenable to autograding. We are constantly using this feedback to improve our problem selection heuristics as we update `FAMMA`.

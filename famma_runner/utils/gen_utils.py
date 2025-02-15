@@ -3,8 +3,9 @@ import os
 import random
 import re
 import base64
-import numpy as np
 from easyllm_kit.utils import get_logger, extract_json_from_text
+from typing import Optional, List, Union, Dict
+from pathlib import Path
 
 logger = get_logger('famma', 'famma.log')
 
@@ -91,8 +92,9 @@ def generate_response_from_llm(model, input_prompt, images=None):
         images = "\n".join(images)
         model_output = model.generate(input_prompt + "\n" + images)
     else:
-        raise NotImplementedError
-    return model_output
+        # message = _prepare_litellm_message(input_prompt, images)
+        # return model.generate(message)
+        return None
 
 
 def safe_parse_response(response_text_all, question_id_list,model_name):
@@ -126,7 +128,7 @@ def safe_parse_response(response_text_all, question_id_list,model_name):
 
         for question_id in question_id_list:
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
-            pattern = rf'"{question_id}"\s*:\s*\{{\s*"answer"\s*:\s*"\(([^"]*)\)"\s*,\s*"explanation"\s*:\s*"([^"]*?)"\s*\}}'
+            pattern = rf'"{question_id}"\s*:\s*\{{\s*"answer"\s*:\s*"(.*?)"\s*,\s*"explanation"\s*:\s*"(.*?)"\s*\}}'
 
             match = re.search(pattern, response_text)
             if match:
