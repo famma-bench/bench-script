@@ -9,13 +9,13 @@ class MyCustomModel(LLM):
         # Initialize your model here
         self.model_config = config['model_config']
         self.generation_config = config['generation_config']
-
+        
     def load(self, **kwargs):
-        # Implement loading logic for your model
+        # Implement loading logic for your model, Optional
         pass
 
-    def generate(self, text):
-        # Implement your model's text generation logic
+    def generate(self, text, image_dir, **kwargs):
+        # Implement your model's text generation logic, mandatory
         return f"Generated text for: {text}"
 
 if __name__ == "__main__":

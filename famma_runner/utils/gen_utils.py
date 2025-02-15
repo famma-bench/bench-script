@@ -3,83 +3,78 @@ import os
 import random
 import re
 import base64
-import numpy as np
 from easyllm_kit.utils import get_logger, extract_json_from_text
+from typing import Optional, List, Union, Dict
+from pathlib import Path
 
 logger = get_logger('famma', 'famma.log')
 
 
-def extract_choice_from_response(response, all_choices, choice_ans):
+def _prepare_litellm_message(prompt: str, images: Optional[List[str]] = None) -> List[Dict]:
+    """Helper function to prepare message for LiteLLM-based models."""
+    message = [{"type": "text", "text": prompt}]
+    if images:
+        message.extend([
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{img}"}
+            } for img in images
+        ])
+    return message
+
+
+def _handle_ocr(ocr_model, images: List[str], prompt: str) -> str:
+    """Process images with OCR and append results to prompt."""
+    ocr_result = ocr_model.ocr(images)
+    ocr_text = '\n'.join([line[1][0] for res in ocr_result for line in res])
+    return f"{prompt}\nthe image placeholders have the following text after OCR:\n\n{ocr_text}"
+
+
+def generate_response_from_llm(
+        model,
+        input_prompt: str,
+        images: Optional[Union[List[str], List[Path]]] = None,
+        use_ocr: bool = False,
+        ocr_model=None
+) -> str:
     """
-    Parse the prediction from the generated response.
-    Return the predicted index e.g., A, B, C, D.
+    Generate responses from various LLM models with optional image input and OCR processing.
+
+    Args:
+        model: The language model instance to use for generation
+        input_prompt (str): The text prompt to send to the model
+        images (Optional[Union[List[str], List[Path]]]): List of image paths or base64 encoded images
+        use_ocr (bool): Whether to use OCR processing on the images
+        ocr_model: OCR model instance (required if use_ocr is True)
+
+    Returns:
+        str: The generated response from the model
+
+    Raises:
+        ValueError: If OCR is requested but no OCR model is provided
+        ValueError: If the model name is not supported
+        NotImplementedError: If the model type is not implemented
     """
-    for char in [",", ".", "!", "?", ";", ":", "'"]:
-        response = response.strip(char)
-    response = " " + response + " "  # add space to avoid partial match
-    index_ans = True
-    candidates = []
+    if not hasattr(model, 'model_name'):
+        raise ValueError("Model must have 'model_name' attribute")
 
-    if len(candidates) == 0:
-        for choice in all_choices:  # e.g., A B C D
-            if f" {choice} " in response:
-                candidates.append(choice)
+    if use_ocr:
+        if ocr_model is None:
+            raise ValueError("ocr_model is required when use_ocr is True")
+        if not images:
+            raise ValueError("Images are required when use_ocr is True")
+        input_prompt = _handle_ocr(ocr_model, images, input_prompt)
+        return model.generate(input_prompt)
 
-    # if all above doesn't get candidates, check if the content is larger than 0 tokens and try to parse the example
-    if len(candidates) == 0 and len(response.split()) > 0:
-        for index, ans in choice_ans.items():
-            ans_pattern = f" {ans.strip()} "
-            if ans_pattern.lower() in response.lower():
-                candidates.append(index)
-                index_ans = False  # it's content ans.
-
-    if len(candidates) == 0:  # still not get answer, randomly choose one.
-        pred_index = random.choice(all_choices)
-    elif len(candidates) > 1:
-        start_indexes = []
-        if index_ans:
-            for can in candidates:
-                index = response.rfind(f" {can} ")
-                start_indexes.append(index)
-        else:
-            for can in candidates:
-                index = response.lower().rfind(choice_ans[can].lower())
-                start_indexes.append(index)
-        # get the last one
-        pred_index = candidates[np.argmax(start_indexes)]
-    else:  # if only one candidate, use it.
-        pred_index = candidates[0]
-
-    return pred_index
-
-
-def generate_response_from_llm(model, input_prompt, images=None):
-    """
-    Get answers for either multiple-choice or open-ended questions from the DataFrame.
-    """
-    if model.model_name in ['gpt4o', 'claude_35_sonnet', 'gemini-1.5']:
-        # we use litellm api for openai / claude / gemini
-        msg = [{
-            "type": "text",
-            "text": input_prompt,
-        }
-        ]
-        if images is not None:
-            for image in images:
-                msg.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{image}"
-                    },
-                })
-        model_output = model.generate(msg)
-    elif model.model_name in ['qwen', 'qwen_vl']:
-        # we use openai api for qwen
-        model_output = model.generate(input_prompt, image_dir=images)
-        model_output = json.loads(model_output)["choices"][0]["message"]["content"]
+    if model.model_name in ['qwen', 'qwen_vl']:
+        response = model.generate(input_prompt, image_dir=images)
+        try:
+            return json.loads(response)["choices"][0]["message"]["content"]
+        except (json.JSONDecodeError, KeyError) as e:
+            raise ValueError(f"Failed to parse Qwen model response: {e}")
     else:
-        raise NotImplementedError
-    return model_output
+        message = _prepare_litellm_message(input_prompt, images)
+        return model.generate(message)
 
 
 def safe_parse_response(response_text, question_id_list):

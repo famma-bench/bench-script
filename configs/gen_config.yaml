@@ -11,6 +11,7 @@ model:
   api_key: xx
   api_url: https://litellm.vllm.yesy.dev
   use_litellm_api: True
+  use_ocr: False
 
 generation:
   temperature: 1.0

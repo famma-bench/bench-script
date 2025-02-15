@@ -32,6 +32,10 @@ class GenerationRunner(Runner):
         self.target_db_name = f'{self.llm_name}_ans_{release_version}'
         self.target_db = initialize_database(output_db=self.target_db_name)
 
+        if self.model_config.get('use_ocr', None):
+            from paddleocr import PaddleOCR
+            self.ocr_model = PaddleOCR(use_angle_cls=True)
+
     def setup_model(self):
         # Build the LLM model
         llm_config = {'model_config': self.config.get('model', None),
