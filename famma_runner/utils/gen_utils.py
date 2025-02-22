@@ -1,6 +1,5 @@
 import json
 import os
-import random
 import re
 import base64
 from easyllm_kit.utils import get_logger, extract_json_from_text
@@ -25,9 +24,21 @@ def _prepare_litellm_message(prompt: str, images: Optional[List[str]] = None) ->
 
 def _handle_ocr(ocr_model, images: List[str], prompt: str) -> str:
     """Process images with OCR and append results to prompt."""
-    ocr_result = ocr_model.ocr(images)
-    ocr_text = '\n'.join([line[1][0] for res in ocr_result for line in res])
-    return f"{prompt}\nthe image placeholders have the following text after OCR:\n\n{ocr_text}"
+    for i, img in enumerate(images):
+        # Convert base64 to bytes and save as temporary jpg
+        img_bytes = base64.b64decode(img)
+        temp_img_path = f"temp_img_{i}.jpg"
+        with open(temp_img_path, "wb") as f:
+            f.write(img_bytes)
+        
+        # Perform OCR on jpg file
+        ocr_result = ocr_model.ocr(temp_img_path)
+        ocr_text = f'\n <image_{i+1}> OCR result: '.join([line[1][0] for res in ocr_result for line in res])
+        prompt = f"{prompt}\n{ocr_text}"
+        
+        # Clean up temporary file
+        os.remove(temp_img_path)
+    return prompt
 
 
 def generate_response_from_llm(
@@ -91,13 +102,12 @@ def safe_parse_response(response_text, question_id_list):
         response_dict = json.loads(response_text)
     except json.JSONDecodeError:
         response_dict = extract_json_from_text(response_text)
-
     if response_dict.get('result', None) == 'error parsing':
         # If JSON parsing fails, use regex
         logger.info('Start to using regex to extract answers.')
         parsed_response = {}
 
-        for question_id in question_id_list:
+        for idx, question_id in enumerate(question_id_list):
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
             pattern = rf'"{question_id}"\s*:\s*\{{\s*"answer"\s*:\s*"(.*?)"\s*,\s*"explanation"\s*:\s*"(.*?)"\s*\}}'
 
@@ -110,10 +120,18 @@ def safe_parse_response(response_text, question_id_list):
                 }
             else:
                 logger.warning(f"Could not find match for question {question_id} in response")
-                parsed_response[question_id] = {
-                    "answer": "",
-                    "explanation": ""
-                }
+                if idx == 0:
+                    logger.warning(f"Save the unparsed text in 'explanation' for question {question_id} in response")
+                    parsed_response[question_id] = {
+                        "answer": "",
+                        "explanation": response_text
+                    }
+                else:
+                    parsed_response[question_id] = {
+                        "answer": "",
+                        "explanation": "",
+                        "unparsed_text": ""
+                    }
 
         if not parsed_response:
             logger.warning(

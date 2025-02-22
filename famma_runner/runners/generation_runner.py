@@ -1,6 +1,7 @@
 from easyllm_kit.utils.io_utils import initialize_database, write_to_database
 from easyllm_kit.utils import get_logger, read_json
 from easyllm_kit.models import LLM
+from easyllm_kit.configs.llm_base_config import GenerationArguments
 import pandas as pd
 import os
 from famma_runner.runners.base_runner import Runner
@@ -14,7 +15,7 @@ logger = get_logger('generation_runner', 'generation_runner.log')
 class GenerationRunner(Runner):
     def __init__(self, config):
         self.model_config = config["model"]
-        self.generation_config = config["generation"]
+        self.generation_config = GenerationArguments(**config.get('generation', {}))
         self.data_config = config["data"]
         self.config = config
 
@@ -32,15 +33,17 @@ class GenerationRunner(Runner):
         self.target_db_name = f'{self.llm_name}_ans_{release_version}'
         self.target_db = initialize_database(output_db=self.target_db_name)
 
+        self.ocr_model = None
         if self.model_config.get('use_ocr', None):
+            # ref: https://paddlepaddle.github.io/PaddleOCR/main/en/ppocr/quick_start.html#11-install-paddlepaddle
             from paddleocr import PaddleOCR
             self.ocr_model = PaddleOCR(use_angle_cls=True)
 
     def setup_model(self):
         # Build the LLM model
-        llm_config = {'model_config': self.config.get('model', None),
-                      'generation_config': self.config.get('generation', None), }
-        
+        llm_config = {'model_config': self.model_config,
+                      'generation_config': self.generation_config}
+
         # If using custom model, load it from custom_llm.py
         if self.model_config.model_name == "custom_llm":
             from custom_llm import MyCustomModel
@@ -92,8 +95,8 @@ class GenerationRunner(Runner):
             context=context,
             sub_questions=sub_questions
         )
-        
-        model_output = generate_response_from_llm(self.llm, prompt, images)
+
+        model_output = generate_response_from_llm(self.llm, prompt, images, use_ocr=self.model_config.use_ocr, ocr_model=self.ocr_model)
         model_response = safe_parse_response(model_output, question_id_list)
 
         return model_response
