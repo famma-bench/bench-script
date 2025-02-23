@@ -83,6 +83,9 @@ def generate_response_from_llm(
             return json.loads(response)["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError) as e:
             raise ValueError(f"Failed to parse Qwen model response: {e}")
+    elif model.model_name == 'gemini' and not model.model_config.use_litellm_api:
+        message = [input_prompt, images]
+        return model.generate(message)
     else:
         message = _prepare_litellm_message(input_prompt, images)
         return model.generate(message)
