@@ -34,7 +34,8 @@ class GenerationRunner(Runner):
         self.target_db = initialize_database(output_db=self.target_db_name)
 
         self.ocr_model = None
-        if self.model_config.get('use_ocr', None):
+        self.use_ocr = self.model_config.get('use_ocr', False)
+        if self.use_ocr:
             # ref: https://paddlepaddle.github.io/PaddleOCR/main/en/ppocr/quick_start.html#11-install-paddlepaddle
             from paddleocr import PaddleOCR
             self.ocr_model = PaddleOCR(use_angle_cls=True)
@@ -96,7 +97,7 @@ class GenerationRunner(Runner):
             sub_questions=sub_questions
         )
 
-        model_output = generate_response_from_llm(self.llm, prompt, images, use_ocr=self.model_config.use_ocr, ocr_model=self.ocr_model)
+        model_output = generate_response_from_llm(self.llm, prompt, images, use_ocr=self.use_ocr, ocr_model=self.ocr_model)
         model_response = safe_parse_response(model_output, question_id_list)
 
         return model_response
