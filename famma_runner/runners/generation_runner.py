@@ -6,7 +6,7 @@ import pandas as pd
 import os
 from famma_runner.runners.base_runner import Runner
 from famma_runner.utils import collect_images_from_first_subquestion, generate_response_from_llm, safe_parse_response
-from famma_runner.utils import QuestionPrompt, LANGUAGE_ORDER, DC, order_by_language
+from famma_runner.utils import QuestionPrompt, LANGUAGE_ORDER, DC, order_by_language, ProgramOfThoughtsQuestionPrompt
 
 logger = get_logger('generation_runner', 'generation_runner.log')
 
@@ -25,13 +25,16 @@ class GenerationRunner(Runner):
         self.dataset_df = self.setup_dataset()
 
         # filter the dataset by main_question_id
-        if self.data_config.main_question_id is not None:
-            self.dataset_df = self.dataset_df[self.dataset_df['main_question_id'] == self.data_config.main_question_id]
+        # for each question_id, we need to find out its main_question_id and language
+        # then filter the dataset by main_question_id and language  
+        self.dataset_df, self.filtered_main_question_ids = self.filter_dataset_by_question_id(self.dataset_df, self.data_config.question_id)
 
         # Initialize the DDB
         release_version = self.data_config.data_dir.split('/')[-1].split('.')[0]
         self.target_db_name = f'{self.llm_name}_ans_{release_version}'
         self.target_db = initialize_database(output_db=self.target_db_name)
+
+        self.use_pot = self.model_config.get('use_pot', False)
 
         self.ocr_model = None
         self.use_ocr = self.model_config.get('use_ocr', False)
@@ -39,6 +42,85 @@ class GenerationRunner(Runner):
             # ref: https://paddlepaddle.github.io/PaddleOCR/main/en/ppocr/quick_start.html#11-install-paddlepaddle
             from paddleocr import PaddleOCR
             self.ocr_model = PaddleOCR(use_angle_cls=True)
+
+    def filter_dataset_by_question_id(self, dataset_df, question_ids):
+        """
+        Filter dataset by specific question_ids.
+        
+        Args:
+            dataset_df: The dataset DataFrame to filter
+            question_ids: A single question_id or list of question_ids in format 
+                         {language}_{main_question_id}_{sub_question_id}_{version}
+            
+        Returns:
+            Filtered DataFrame containing only rows matching the main_question_ids and languages
+        """
+        filtered_main_question_ids = None
+        if not question_ids:
+            return dataset_df, filtered_main_question_ids
+        
+        # Convert single question_id to list for consistent processing
+        if not isinstance(question_ids, list):
+            question_ids = [question_ids]
+        
+        if len(question_ids) == 0:
+            return dataset_df, filtered_main_question_ids
+        
+        # Create empty DataFrame to collect all filtered results
+        filtered_results = pd.DataFrame()
+        
+        # Track unique language-main_question_id pairs to avoid duplicate processing
+        processed_pairs = set()
+        
+        for question_id in question_ids:
+            try:
+                # Parse the question_id to extract components
+                parts = question_id.split('_')
+                if len(parts) >= 3:  # Ensure we have at least language, main_question_id, and sub_question_id
+                    language = parts[0]
+                    main_question_id = int(parts[1])
+                    
+                    # Create a unique identifier for this language-main_question_id pair
+                    pair_key = f"{language}_{main_question_id}"
+                    
+                    # Skip if we've already processed this pair
+                    if pair_key in processed_pairs:
+                        # logger.info(f"Skipping duplicate filter for {pair_key}")
+                        continue
+                    
+                    processed_pairs.add(pair_key)
+                    
+                    logger.info(f"Filtering dataset for language: {language}, main_question_id: {main_question_id}")
+                    
+                    # Filter the dataset by both main_question_id and language
+                    current_filtered = dataset_df[
+                        (dataset_df[DC.MAIN_QUESTION_ID] == main_question_id) & 
+                        (dataset_df[DC.LANGUAGE] == language)
+                    ]
+                    
+                    if current_filtered.empty:
+                        logger.warning(f"No matching questions found for {question_id}")
+                    else:
+                        logger.info(f"Found {len(current_filtered)} questions matching {question_id}")
+                        # Append to our results
+                        filtered_results = pd.concat([filtered_results, current_filtered])
+                else:
+                    logger.warning(f"Invalid question_id format: {question_id}")
+            except Exception as e:
+                logger.error(f"Error parsing question_id {question_id}: {str(e)}")
+        
+        # If we didn't find any matches, return the original dataset
+        if filtered_results.empty:
+            logger.warning("No matching questions found for any of the provided question_ids")
+            return dataset_df
+        
+        # Remove duplicates in case multiple filters matched the same rows
+        filtered_results = filtered_results.drop_duplicates()
+        logger.info(f"Total of {len(filtered_results)} questions matched across all filters")
+        
+        # Extract unique main_question_ids from filtered results
+        filtered_main_question_ids = filtered_results[DC.MAIN_QUESTION_ID].unique().tolist()
+        return filtered_results, filtered_main_question_ids
 
     def setup_model(self):
         # Build the LLM model
@@ -92,10 +174,16 @@ class GenerationRunner(Runner):
             question_id_list.append(row['question_id'])
 
         # Format the prompt with the structured questions
-        prompt = QuestionPrompt.init().format(
-            context=context,
-            sub_questions=sub_questions
-        )
+        if self.use_pot:
+            prompt = ProgramOfThoughtsQuestionPrompt.init().format(
+                context=context,
+                sub_questions=sub_questions
+            )
+        else:
+            prompt = QuestionPrompt.init().format(
+                context=context,
+                sub_questions=sub_questions
+            )
 
         model_output = generate_response_from_llm(self.llm, prompt, images, use_ocr=self.use_ocr, ocr_model=self.ocr_model)
         model_response = safe_parse_response(model_output, question_id_list)
@@ -109,7 +197,9 @@ class GenerationRunner(Runner):
         for (_, language, main_question_id), group in dataset_df.groupby(
                 ['language_order', DC.LANGUAGE, DC.MAIN_QUESTION_ID]):
             key = f'{language}_{main_question_id}'
-            if key in self.target_db:
+            # Skip if already in database AND not specifically requested in filtered_main_question_ids
+            if key in self.target_db and (self.filtered_main_question_ids is None or main_question_id not in self.filtered_main_question_ids):
+            # Skip this question since it's already in the database and not specifically requested
                 continue
             try:
                 logger.info(f'start generating answers for {language} -- main_question_id: {main_question_id}')
@@ -143,53 +233,3 @@ class GenerationRunner(Runner):
         logger.info('Generation complete')
         logger.info('Result saved to %s in json format', self.target_db_name)
         logger.info('Result saved to %s in csv format', 'output_samples.csv')
-
-    def _run_single(self, prompt: str) -> list[str]:
-        pass
-
-    def run_batch(self, prompts: list[str]) -> list[list[str]]:
-        outputs = [None for _ in prompts]
-        remaining_prompts = []
-        remaining_indices = []
-        for prompt_index, prompt in enumerate(prompts):
-            if self.args.use_cache and prompt in self.cache:
-                if len(self.cache[prompt]) == self.args.n:
-                    outputs[prompt_index] = self.cache[prompt]
-                    continue
-            remaining_prompts.append(prompt)
-            remaining_indices.append(prompt_index)
-        if remaining_prompts:
-            vllm_outputs = self.llm.generate(remaining_prompts, self.sampling_params)
-            if self.args.use_cache:
-                assert len(remaining_prompts) == len(vllm_outputs)
-                for index, remaining_prompt, vllm_output in zip(
-                        remaining_indices, remaining_prompts, vllm_outputs
-                ):
-                    self.cache[remaining_prompt] = [o.text for o in vllm_output.outputs]
-                    outputs[index] = [o.text for o in vllm_output.outputs]
-            else:
-                for index, vllm_output in zip(remaining_indices, vllm_outputs):
-                    outputs[index] = [o.text for o in vllm_output.outputs]
-        return outputs
-
-    def prompts_to_outputs(
-            self, prompts: list[str | list[dict[str, str]]]
-    ) -> list[list[str]]:
-        if self.args.use_cache:
-            outputs = []
-            batch_size = self.args.cache_batch_size
-            for i in range(0, len(prompts), batch_size):
-                batch = prompts[i: i + batch_size]
-                batch_outputs = self.run_batch(batch)
-                outputs.extend(batch_outputs)
-                self.save_cache()
-        else:
-            outputs = self.run_batch(prompts)
-        return outputs
-
-    def generate_outputs(self, benchmark: list, format_prompt: callable) -> list[list[str]]:
-        prompts = [
-            format_prompt(problem, self.model.model_style) for problem in benchmark
-        ]
-        outputs = self.prompts_to_outputs(prompts)
-        return outputs
