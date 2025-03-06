@@ -1,59 +1,12 @@
-import base64
 import os
-import ast
-import string
 from PIL import Image
 from PIL.JpegImagePlugin import JpegImageFile
 from PIL.PngImagePlugin import PngImageFile
-from io import BytesIO
 from datasets import load_dataset
 from easyllm_kit.utils import save_json
-
-
-def image_to_base64(image):
-    """
-    Convert image to base64 format
-    """
-    if image.mode == 'RGBA':
-        image = image.convert('RGB')
-    buffered = BytesIO()
-    image.save(buffered, format="JPEG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-
-def remove_json_format(json_str):
-    json_str = json_str.strip().lstrip('```json').strip()
-    json_str = json_str.rstrip('```').strip()
-    return json_str
-
-
-def parse_list(value):
-    """
-    Convert a comma-separated string to a list.
-    """
-    return value.split(',')
-
-
-def format_options(options_str):
-    """
-    Parse the options string and format it with labels.
-    """
-    # Parse the options string into a list
-    options = ast.literal_eval(options_str.strip().replace('\n', ' '))
-    # Generate labels (A, B, C, etc.) for each option
-    labels = string.ascii_uppercase[:len(options)]
-    # Create the options dictionary with labels as keys
-    options_dict = {label: option for label,
-    option in zip(labels, options)}
-    # Format the options into a string with each option on a new line, prefixed by its label
-    formatted_options = "\n".join(
-        [f"{label}: {option}" for label, option in zip(labels, options)])
-
-    return {
-        "labels": labels,
-        "options_dict": options_dict,
-        "formatted_options": formatted_options
-    }
+import numpy as np
+import pandas as pd
+from famma_runner.utils.data_const import DatasetColumns as DC
 
 
 def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release_v2406"):
@@ -166,3 +119,66 @@ def order_by_language(df, language_order, main_question_col, sub_question_col, l
 
     # Sort DataFrame with language order first
     df.sort_values(['language_order', main_question_col, sub_question_col], inplace=True)
+
+
+def sample_questions(df, num_english_main_questions=40, num_chinese_main_questions=20, num_french_main_questions=10):
+    """
+    Sample questions from the dataset.
+    """
+    def sample_language_questions(df, language, num_questions):
+        main_ids = df[df[DC.LANGUAGE] == language][DC.MAIN_QUESTION_ID].unique()
+        sampled_main_ids = np.random.choice(main_ids, num_questions, replace=False)
+        sampled_df = df[df[DC.LANGUAGE] == language][df[DC.MAIN_QUESTION_ID].isin(sampled_main_ids)]
+        print(f"Sampled {len(sampled_df)} {language} questions")
+        return sampled_df
+
+    # Sample questions for each language
+    language_samples = {
+        'english': num_english_main_questions,
+        'chinese': num_chinese_main_questions, 
+        'french': num_french_main_questions
+    }
+
+    sampled_dfs = [sample_language_questions(df, lang, n) for lang, n in language_samples.items()]
+    sampled_df = pd.concat(sampled_dfs)
+
+    print(f"Sampled {len(sampled_df)} questions")
+
+    # the selected question ids are unique
+    selected_question_ids = sampled_df[DC.QUESTION_ID].tolist()
+
+    res_df = df[~df[DC.QUESTION_ID].isin(selected_question_ids)]
+    print(f"Remaining {len(res_df)} questions")
+
+    # as we extract some questions, the main question ids become non-continuous
+    # we need to reindex the main question ids
+    # Process each dataframe separately
+    for df_to_process in [sampled_df, res_df]:
+        # Process each language separately
+        for language in df_to_process[DC.LANGUAGE].unique():
+            # Get subset for this language
+            language_mask = df_to_process[DC.LANGUAGE] == language
+            language_df = df_to_process[language_mask]
+            
+            # Get unique main question IDs in sorted order
+            unique_main_ids = sorted(language_df[DC.MAIN_QUESTION_ID].unique())
+            
+            # Create mapping from old to new main question IDs
+            main_id_mapping = {old_id: new_id for new_id, old_id in enumerate(unique_main_ids, 1)}
+            
+            # Update main question IDs
+            df_to_process.loc[language_mask, DC.MAIN_QUESTION_ID] = \
+                df_to_process.loc[language_mask, DC.MAIN_QUESTION_ID].map(main_id_mapping)
+            
+            # For each main question, reindex the subquestions
+            for main_id in df_to_process.loc[language_mask, DC.MAIN_QUESTION_ID].unique():
+                main_q_mask = (df_to_process[DC.MAIN_QUESTION_ID] == main_id) & language_mask
+                # Sort by existing subquestion IDs to maintain order
+                sorted_indices = df_to_process[main_q_mask].sort_values(DC.SUB_QUESTION_ID).index
+                # Assign new sequential subquestion IDs starting from 1
+                df_to_process.loc[sorted_indices, DC.SUB_QUESTION_ID] = \
+                    range(1, len(sorted_indices) + 1)
+
+    return sampled_df, res_df
+
+

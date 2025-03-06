@@ -4,6 +4,7 @@ from easyllm_kit.models import LLM
 from easyllm_kit.configs.llm_base_config import GenerationArguments
 import pandas as pd
 import os
+import omegaconf
 from famma_runner.runners.base_runner import Runner
 from famma_runner.utils import collect_images_from_first_subquestion, generate_response_from_llm, safe_parse_response
 from famma_runner.utils import QuestionPrompt, LANGUAGE_ORDER, DC, order_by_language, ProgramOfThoughtsQuestionPrompt
@@ -60,7 +61,7 @@ class GenerationRunner(Runner):
             return dataset_df, filtered_main_question_ids
         
         # Convert single question_id to list for consistent processing
-        if not isinstance(question_ids, list):
+        if not isinstance(question_ids, omegaconf.ListConfig):
             question_ids = [question_ids]
         
         if len(question_ids) == 0:
@@ -113,9 +114,7 @@ class GenerationRunner(Runner):
         if filtered_results.empty:
             logger.warning("No matching questions found for any of the provided question_ids")
             return dataset_df
-        
-        # Remove duplicates in case multiple filters matched the same rows
-        filtered_results = filtered_results.drop_duplicates()
+
         logger.info(f"Total of {len(filtered_results)} questions matched across all filters")
         
         # Extract unique main_question_ids from filtered results
