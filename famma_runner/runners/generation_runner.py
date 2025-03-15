@@ -28,7 +28,7 @@ class GenerationRunner(Runner):
         # filter the dataset by main_question_id
         # for each question_id, we need to find out its main_question_id and language
         # then filter the dataset by main_question_id and language  
-        self.dataset_df, self.filtered_main_question_ids = self.filter_dataset_by_question_id(self.dataset_df, self.data_config.question_id)
+        self.dataset_df, self.filtered_main_question_ids = self.filter_dataset_by_question_id(self.dataset_df, self.data_config.main_question_id)
 
         # Initialize the DDB
         release_version = self.data_config.data_dir.split('/')[-1].split('.')[0]
@@ -153,8 +153,7 @@ class GenerationRunner(Runner):
         # Collect images from the first sub-question
         # parent_dir is the parent directory of the dataset - self.data_config.data_dir
         parent_dir = os.path.dirname(self.data_config.data_dir)
-        model = self.llm.model_config.model_name
-        images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir, model_name=model)
+        images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir)
 
         sub_questions = []
         question_id_list = []

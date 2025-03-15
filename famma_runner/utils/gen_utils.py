@@ -92,7 +92,7 @@ def generate_response_from_llm(
         return None
 
 
-def safe_parse_response(response_text_all, question_id_list,model_name):
+def safe_parse_response(response_text_all, question_id_list):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.
     Args:
@@ -102,7 +102,7 @@ def safe_parse_response(response_text_all, question_id_list,model_name):
         Dictionary mapping question IDs to their answers and explanations
     """
     # First try to parse as JSON
-    if model_name in ['custom_llm']: # TODO:逻辑关系不对
+    if "<think>" in response_text_all: # TODO:逻辑关系不对
         response_dict_all =json.loads(response_text_all) # TODO:对于r1，这里是custum_model，先load进所有内容，response_text
         response_text = response_dict_all['content']
         reasoning_text = response_dict_all['reasoning']
@@ -150,13 +150,12 @@ def safe_parse_response(response_text_all, question_id_list,model_name):
         if not parsed_response:
             logger.warning(
                 "Could not parse any responses. Response text: %s", response_text)
-
         return parsed_response
     else:
         return response_dict
 
 
-def collect_images_from_first_subquestion(sub_question_set_df, parent_dir, model_name):
+def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):
     """
     Collects unique images from the first sub-question in the question set and returns them as a list.
     """
@@ -170,18 +169,8 @@ def collect_images_from_first_subquestion(sub_question_set_df, parent_dir, model
             if first_row.get(image_key) is not None and first_row[image_key] != 'None':
                 image_dir = os.path.join(parent_dir, first_row[image_key])
                 # encode image to base64
-                if model_name in ['custom_llm']:#TODO:model_name,custom_llm,逻辑关系不对
-                    ocr_text = paddle_ocr(image_dir)
-                    images.append(ocr_text)
-                else:
-                    with open(image_dir, 'rb') as image_file:
-                        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                        images.append(encoded_string)
-    return images
+                with open(image_dir, 'rb') as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                    images.append(encoded_string)
 
-#新增OCR处理函数
-from paddleocr import PaddleOCR
-def paddle_ocr(img_path):
-    ocr_model = PaddleOCR(show_log=False)
-    result = ocr_model.ocr(img_path)
-    return '\n'.join([line[1][0] for res in result for line in res])
+    return images
