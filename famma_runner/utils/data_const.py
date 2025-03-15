@@ -62,6 +62,7 @@ class DatasetColumns(str, Enum):
     LANGUAGE = 'language'
     MAIN_QUESTION_ID = 'main_question_id'
     SUB_QUESTION_ID = 'sub_question_id'
+    IS_ARITHMETIC = 'is_arithmetic'
     ANS_IMAGE_1 = 'ans_image_1'
     ANS_IMAGE_2 = 'ans_image_2'
     ANS_IMAGE_3 = 'ans_image_3'
@@ -111,6 +112,7 @@ class DatasetColumns(str, Enum):
             cls.LANGUAGE: Value('string'),
             cls.MAIN_QUESTION_ID: Value('string'),
             cls.SUB_QUESTION_ID: Value('string'),
+            cls.IS_ARITHMETIC: Value('int32'),
         })
         
         # Add answer image columns with Image feature
@@ -132,7 +134,7 @@ class DatasetColumns(str, Enum):
             cls.INDEX, cls.QUESTION_ID, cls.CONTEXT, cls.QUESTION,
             cls.IMAGE_TYPE, cls.ANSWER, cls.EXPLANATION, cls.TOPIC_DIFFICULTY,
             cls.QUESTION_TYPE, cls.SUBFIELD, cls.LANGUAGE, cls.MAIN_QUESTION_ID,
-            cls.SUB_QUESTION_ID, cls.RELEASE
+            cls.SUB_QUESTION_ID, cls.IS_ARITHMETIC, cls.RELEASE
         }
         
         # Add image columns to required keys

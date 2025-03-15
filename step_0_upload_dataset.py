@@ -256,6 +256,7 @@ def prepare_dataset(csv_path, image_parent_dir, version):
         sample[DC.LANGUAGE] = row[DC.LANGUAGE]
         sample[DC.MAIN_QUESTION_ID] = row[DC.MAIN_QUESTION_ID]
         sample[DC.SUB_QUESTION_ID] = row[DC.SUB_QUESTION_ID]
+        sample[DC.IS_ARITHMETIC] = row[DC.IS_ARITHMETIC]
 
         # Add answer image columns - only if this is the first sub-question
         for i in range(1, 7):

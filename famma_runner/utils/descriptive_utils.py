@@ -23,6 +23,9 @@ def get_dataset_statistics(data_dir):
         "topic_difficulty_count": defaultdict(int),
         "explanation_count": 0,
         "multiple_images_count": 0,
+        "arithmetic_count": 0,
+        "arithmetic_by_language": defaultdict(int),
+        "arithmetic_by_difficulty": defaultdict(int),
         "token_counts": defaultdict(lambda: {"total": 0, "count": 0, "average": 0}),
         "subfield_difficulty_count": defaultdict(lambda: defaultdict(lambda: {"easy": 0, "medium": 0, "hard": 0})),
         "total_token_sum": {"total": 0, "count": 0, "average": 0},
@@ -50,6 +53,12 @@ def get_dataset_statistics(data_dir):
             stats["explanation_count"] += 1
         if item["image_2"] != 'None':
             stats["multiple_images_count"] += 1
+
+        # Count arithmetic questions
+        if item.get("is_arithmetic") == '1':  # Default to False if field doesn't exist
+            stats["arithmetic_count"] += 1
+            stats["arithmetic_by_language"][item["language"]] += 1
+            stats["arithmetic_by_difficulty"][item["topic_difficulty"]] += 1
 
         # Calculate the token count of content + question
         content_question = item["context"] + item["question"]
