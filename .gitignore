@@ -35,6 +35,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 /data
+/hf_data
+/hf_data_backup_0307
 /result
 /ddb_storage
 /statistics
