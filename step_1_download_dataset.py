@@ -10,8 +10,8 @@ def main():
     parser.add_argument(
         "--hf_dir", 
         type=str, 
-        # default="weaverbirdllm/famma",
-        default="./cache/release_v2501",
+        default="weaverbirdllm/famma",
+        # default="./cache/release_v2501",
         help="The HuggingFace repository name"
     )
     
@@ -32,7 +32,7 @@ def main():
     parser.add_argument(
         "--from_local", 
         type=bool, 
-        default=True,
+        default=False,
         help="If True, load from local cache instead of HuggingFace"
     )
     

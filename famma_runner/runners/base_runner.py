@@ -1,4 +1,3 @@
-from abc import abstractmethod
 import json
 from registrable import Registrable
 

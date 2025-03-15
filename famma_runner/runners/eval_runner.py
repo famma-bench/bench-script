@@ -1,8 +1,8 @@
 from easyllm_kit.utils.io_utils import initialize_database, write_to_database
 from easyllm_kit.utils import get_logger, read_json, extract_json_from_text, convert_to_dict
 from easyllm_kit.models import LLM
+from easyllm_kit.configs.llm_base_config import GenerationArguments
 import pandas as pd
-import os
 
 from famma_runner.runners.base_runner import Runner
 from famma_runner.utils import generate_response_from_llm, DC, LANGUAGE_ORDER, order_by_language, JudgePrompt
@@ -14,7 +14,7 @@ logger = get_logger('eval_runner', 'eval_runner.log')
 class EvaluationRunner(Runner):
     def __init__(self, config):
         self.model_config = config["model"]
-        self.generation_config = config["generation"]
+        self.generation_config = GenerationArguments(**config.get('generation', {}))
         self.data_config = config["data"]
         self.config = config
 
@@ -33,8 +33,8 @@ class EvaluationRunner(Runner):
 
     def setup_model(self):
         # Build the LLM model
-        llm_config = {'model_config': self.config.get('model', None),
-                      'generation_config': self.config.get('generation', None), }
+        llm_config = {'model_config': self.model_config,
+                      'generation_config': self.generation_config}
         llm = LLM.build_from_config(llm_config)
 
         return llm

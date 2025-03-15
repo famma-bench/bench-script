@@ -63,6 +63,7 @@ You can specify the dataset version when downloading, see [Downloading Dataset](
 Clone the repository and install the dependencies:
 ```bash
 git clone https://github.com/famma-bench/bench-script.git
+cd bench-script
 pip install -r requirements.txt
 ```
 
@@ -84,6 +85,9 @@ Options:
 - `--split`: Specific version to download (optional)
 - `--save_dir`: Local directory to save the dataset (default: "./hf_data")
 
+
+After downloading, the dataset will be saved in the local directory `./data` in json format. 
+
 ### Dataset Structure
 
 Each sample in the dataset contains:
@@ -102,6 +106,7 @@ Each sample in the dataset contains:
 - language: the language in which the question text is written.
 - main_question_id: a unique identifier under the same language subset for the question within its context; questions with the same context share the same ID.
 - sub_question_id: a unique identifier for the question within its corresponding main question.
+- is_arithmetic: whether the question is an arithmetic question that needs heavy calculation.
 - ans_image_1 - ans_image_6: (public on `release_v2406`, non-public on the live set `release_v2501`)
 
 ## Custom LLM Evaluation
@@ -111,6 +116,15 @@ One can customized a LLM and evaluate it on the `FAMMA` dataset. It involves two
 2. Define a yaml config for the LLM to load the model. See [custom_gen.yaml](./configs/custom_gen.yaml) for more details.
 
 Then the evaluation can be done with the same script (except specify the config file) as the default one.
+
+
+
+## Colab Tutorials
+
+Explore the following tutorials that can be opened directly in Google Colab:
+
+- [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/famma-bench/bench-script/blob/main/notebooks/FAMMA_1_dataset.ipynb) Tutorial 1: Dataset in FAMMA.
+
 
 ## ERRATA
 We maintain a list of known issues and updates in the [ERRATA.md](./ERRATA.md) file. Particularly, we document issues regarding erroneous tests and problems not amenable to autograding. We are constantly using this feedback to improve our problem selection heuristics as we update `FAMMA`.

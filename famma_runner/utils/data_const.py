@@ -1,5 +1,4 @@
 from enum import Enum
-from dataclasses import dataclass
 from typing import List, Dict, Optional, Any
 from datasets import Features, Value, Sequence, Image
 
@@ -8,6 +7,8 @@ class ReleaseVersion(str, Enum):
     Maps release versions to their short names.
     """
     RELEASE_V1 = 'release_v2406'
+    RELEASE_V1_TRAIN = 'release_v2406_train'
+    RELEASE_V1_TEST = 'release_v2406_test'
     RELEASE_V2 = 'release_v2501'
     RELEASE_V3 = 'release_v2507'
     
@@ -16,6 +17,8 @@ class ReleaseVersion(str, Enum):
         """Convert release version to short name"""
         mapping = {
             cls.RELEASE_V1: 'r1',
+            cls.RELEASE_V1_TRAIN: 'r1_train',
+            cls.RELEASE_V1_TEST: 'r1_test',
             cls.RELEASE_V2: 'r2',
             cls.RELEASE_V3: 'r3',
         }
@@ -26,6 +29,8 @@ class ReleaseVersion(str, Enum):
         """Convert short name back to release version"""
         mapping = {
             'r1': cls.RELEASE_V1,
+            'r1_train': cls.RELEASE_V1_TRAIN,
+            'r1_test': cls.RELEASE_V1_TEST,
             'r2': cls.RELEASE_V2,
             'r3': cls.RELEASE_V3,
         }
@@ -57,6 +62,7 @@ class DatasetColumns(str, Enum):
     LANGUAGE = 'language'
     MAIN_QUESTION_ID = 'main_question_id'
     SUB_QUESTION_ID = 'sub_question_id'
+    IS_ARITHMETIC = 'is_arithmetic'
     ANS_IMAGE_1 = 'ans_image_1'
     ANS_IMAGE_2 = 'ans_image_2'
     ANS_IMAGE_3 = 'ans_image_3'
@@ -106,6 +112,7 @@ class DatasetColumns(str, Enum):
             cls.LANGUAGE: Value('string'),
             cls.MAIN_QUESTION_ID: Value('string'),
             cls.SUB_QUESTION_ID: Value('string'),
+            cls.IS_ARITHMETIC: Value('int32'),
         })
         
         # Add answer image columns with Image feature
@@ -127,7 +134,7 @@ class DatasetColumns(str, Enum):
             cls.INDEX, cls.QUESTION_ID, cls.CONTEXT, cls.QUESTION,
             cls.IMAGE_TYPE, cls.ANSWER, cls.EXPLANATION, cls.TOPIC_DIFFICULTY,
             cls.QUESTION_TYPE, cls.SUBFIELD, cls.LANGUAGE, cls.MAIN_QUESTION_ID,
-            cls.SUB_QUESTION_ID, cls.RELEASE
+            cls.SUB_QUESTION_ID, cls.IS_ARITHMETIC, cls.RELEASE
         }
         
         # Add image columns to required keys

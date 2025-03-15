@@ -1,6 +1,5 @@
 import os
 import tiktoken
-import pandas as pd
 
 from collections import defaultdict
 from easyllm_kit.utils import save_json, read_json
@@ -24,6 +23,9 @@ def get_dataset_statistics(data_dir):
         "topic_difficulty_count": defaultdict(int),
         "explanation_count": 0,
         "multiple_images_count": 0,
+        "arithmetic_count": 0,
+        "arithmetic_by_language": defaultdict(int),
+        "arithmetic_by_difficulty": defaultdict(int),
         "token_counts": defaultdict(lambda: {"total": 0, "count": 0, "average": 0}),
         "subfield_difficulty_count": defaultdict(lambda: defaultdict(lambda: {"easy": 0, "medium": 0, "hard": 0})),
         "total_token_sum": {"total": 0, "count": 0, "average": 0},
@@ -51,6 +53,12 @@ def get_dataset_statistics(data_dir):
             stats["explanation_count"] += 1
         if item["image_2"] != 'None':
             stats["multiple_images_count"] += 1
+
+        # Count arithmetic questions
+        if item.get("is_arithmetic") == '1':  # Default to False if field doesn't exist
+            stats["arithmetic_count"] += 1
+            stats["arithmetic_by_language"][item["language"]] += 1
+            stats["arithmetic_by_difficulty"][item["topic_difficulty"]] += 1
 
         # Calculate the token count of content + question
         content_question = item["context"] + item["question"]
@@ -121,163 +129,3 @@ def get_dataset_statistics(data_dir):
     # Return the statistics
     return stats
 
-def evaluation_result(eval_df):
-    """
-    Calculates and saves evaluation metrics.
-    """
-    total_count = eval_df.shape[0]
-    correct_count = eval_df[eval_df["is_correct"] == True].shape[0]
-    unable_to_answer_count = eval_df[eval_df["is_correct"] == "unable to answer"].shape[0]
-    result_dict = {
-        "total_count": total_count,
-        "correct_count": correct_count,
-        "unable_to_answer_count": unable_to_answer_count,
-        "accuracy_rate": round(correct_count / total_count, 3) if total_count > 0 else 0.0,
-        "language_stats": defaultdict(lambda: {
-            "total_count": 0,
-            "correct_count": 0,
-            "unable_to_answer_count": 0,
-            "accuracy_rate": 0.0,
-            "difficulty_stats": defaultdict(lambda: {
-                "total_count": 0,
-                "correct_count": 0,
-                "unable_to_answer_count": 0,
-                "accuracy_rate": 0.0,
-            })
-        }),
-        "subfield_stats": defaultdict(lambda: {
-            "total_count": 0,
-            "correct_count": 0,
-            "accuracy_rate": 0.0,
-            "unable_to_answer_count": 0,
-        }),
-        "difficulty_stats": defaultdict(lambda: {
-            "total_count": 0,
-            "correct_count": 0,
-            "accuracy_rate": 0.0,
-        })
-    }
-
-    # Initialize per-language statistics
-    language_stats = defaultdict(lambda: {
-        "total_count": 0,
-        "correct_count": 0,
-        "unable_to_answer_count": 0,
-        "total_score": 0,
-        "difficulty_stats": defaultdict(lambda: {
-            "total_count": 0,
-            "correct_count": 0,
-            "total_score": 0.0,
-            "accuracy_rate": 0.0,
-        })
-    })
-
-    # Initialize per-subfield statistics
-    subfield_stats = defaultdict(lambda: {
-        "total_count": 0,
-        "correct_count": 0,
-        "total_score": 0.0,
-        "max_score": 0,
-    })
-
-    # Initialize per-difficulty statistics
-    difficulty_stats = defaultdict(lambda: {
-        "total_count": 0,
-        "correct_count": 0,
-        "total_score": 0.0,
-        "max_score": 0,
-    })
-
-    # Compute per-language statistics
-    for question_id, question_data in sample_score_db.items():
-        language_key = question_data["language"].capitalize()
-        subfield_key = question_data["subfield"]
-        difficulty = question_data["topic_difficulty"]
-
-        # Update language stats
-        language_stats[language_key]["total_count"] += 1
-
-        # Update language difficulty stats
-        language_stats[language_key]["difficulty_stats"][difficulty]["total_count"] += 1
-
-        # Update subfield stats
-        subfield_stats[subfield_key]["total_count"] += 1
-
-        # Update difficulty stats
-        difficulty_stats[difficulty]["total_count"] += 1
-
-        if question_data.get("is_correct") == "unable to answer":
-            language_stats[language_key]["unable_to_answer_count"] += 1
-            language_stats[language_key]["difficulty_stats"][difficulty]["unable_to_answer_count"] += 1
-            subfield_stats[subfield_key]["unable_to_answer_count"] += 1
-            difficulty_stats[difficulty]["unable_to_answer_count"] += 1
-        elif question_data.get("is_correct") == True or question_data.get("is_correct") == 'True':
-            language_stats[language_key]["correct_count"] += 1
-            language_stats[language_key]["difficulty_stats"][difficulty]["correct_count"] += 1
-            subfield_stats[subfield_key]["correct_count"] += 1
-            difficulty_stats[difficulty]["correct_count"] += 1
-
-    # Compute language-specific statistics
-    for language, stats in language_stats.items():
-        total_count = stats["total_count"]
-        correct_count = stats["correct_count"]
-        unable_to_answer_count = stats["unable_to_answer_count"]
-        total_score = stats["total_score"]
-
-        accuracy_rate = round(correct_count / total_count,
-                              3) if total_count > 0 else 0.0
-
-        result_dict["language_stats"][language] = {
-            "total_count": total_count,
-            "correct_count": correct_count,
-            "unable_to_answer_count": unable_to_answer_count,
-            "accuracy_rate": accuracy_rate,
-            "difficulty_stats": {difficulty: {
-                "total_count": stats["difficulty_stats"][difficulty]["total_count"],
-                "correct_count": stats["difficulty_stats"][difficulty]["correct_count"],
-                "unable_to_answer_count": stats["difficulty_stats"][difficulty]["unable_to_answer_count"],
-                "accuracy_rate": round(
-                    stats["difficulty_stats"][difficulty]["correct_count"] /
-                    stats["difficulty_stats"][difficulty]["total_count"], 3)
-                if stats["difficulty_stats"][difficulty]["total_count"] > 0 else 0.0,
-            } for difficulty in stats["difficulty_stats"]}
-        }
-
-    # Compute subfield-specific statistics
-    for subfield, stats in subfield_stats.items():
-        total_count = stats["total_count"]
-        correct_count = stats["correct_count"]
-        unable_to_answer_count = stats["unable_to_answer_count"]
-        total_score = stats["total_score"]
-
-        accuracy_rate = round(correct_count / total_count,
-                              3) if total_count > 0 else 0.0
-
-        result_dict["subfield_stats"][subfield] = {
-            "total_count": total_count,
-            "correct_count": correct_count,
-            "unable_to_answer_count": unable_to_answer_count,
-            "accuracy_rate": accuracy_rate
-        }
-
-    # Compute subfield-specific statistics
-    for difficulty, stats in difficulty_stats.items():
-        total_count = stats["total_count"]
-        correct_count = stats["correct_count"]
-        unable_to_answer_count = stats["unable_to_answer_count"]
-        total_score = stats["total_score"]
-
-        accuracy_rate = round(correct_count / total_count,
-                              3) if total_count > 0 else 0.0
-
-        result_dict["difficulty_stats"][difficulty] = {
-            "total_count": total_count,
-            "correct_count": correct_count,
-            "unable_to_answer_count": unable_to_answer_count,
-            "accuracy_rate": accuracy_rate,
-            "total_score": total_score
-        }
-
-    # Save results
-    # save to current directory
-    save_json('eval_result.json', result_dict)
