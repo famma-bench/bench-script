@@ -2,7 +2,7 @@ runner_name: generation
 
 data:
   data_dir: ./hf_data/release_v2406.json
-  main_question_id: null
+  question_id: null
 
 model:
   model_name: custom_llm
@@ -11,7 +11,8 @@ model:
   api_url: https://ark.cn-beijing.volces.com/api/v3
   model_full_name: ep-20250213112920-zldrb
   use_ocr: true
-
+  is_reasoning_model: true
+  
 generation:
   temperature: 0.0
   top_p: 0.9

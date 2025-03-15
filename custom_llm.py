@@ -26,22 +26,13 @@ class MyCustomModel(LLM):
             temperature=self.generation_config.temperature,
             top_p=self.generation_config.top_p,
             messages=[
-                {"role": "user", "content": prompt}],
-                stream=True
-        )
+                {"role": "user", "content": prompt}]
+                                )
         reasoning_content = ""
-        content = ""
-        for chunk in response:
-            if hasattr(chunk.choices[0].delta, 'reasoning_content') and chunk.choices[0].delta.reasoning_content:
-                reasoning_content += chunk.choices[0].delta.reasoning_content
-            else:
-                content += chunk.choices[0].delta.content
-
-        final_dict = {
-            "content": content,
-            "reasoning": reasoning_content
-        }
-        return json.dumps(final_dict, ensure_ascii=False)
+        if hasattr(response.choices[0].message, 'reasoning_content'):
+            reasoning_content = response.choices[0].message.reasoning_content
+        content = response.choices[0].message.content
+        return reasoning_content, content
 
 
 if __name__ == "__main__":
