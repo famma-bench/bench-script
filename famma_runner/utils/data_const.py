@@ -1,15 +1,15 @@
 from enum import Enum
-from typing import List, Dict, Optional, Any
+from typing import Dict
 from datasets import Features, Value, Sequence, Image
 
 class ReleaseVersion(str, Enum):
     """
     Maps release versions to their short names.
     """
-    RELEASE_V1 = 'release_v2406'
-    RELEASE_V1_TRAIN = 'release_v2406_train'
-    RELEASE_V1_TEST = 'release_v2406_test'
-    RELEASE_V2 = 'release_v2501'
+    RELEASE_V1 = 'release_basic'
+    RELEASE_V1_TRAIN = 'release_basic_train'
+    RELEASE_V1_TEST = 'release_basic_test'
+    RELEASE_V2 = 'release_livepro'
     RELEASE_V3 = 'release_v2507'
     
     @classmethod
