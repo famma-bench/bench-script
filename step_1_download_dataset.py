@@ -18,8 +18,8 @@ def main():
     parser.add_argument(
         "--split", 
         type=str, 
-        default='release_v2501',
-        help="Specific split to download (e.g., 'release_v2406'). If not specified, downloads all splits."
+        default='release_livepro',
+        help="Specific split to download (e.g., 'release_basic'). If not specified, downloads all splits."
     )
     
     parser.add_argument(

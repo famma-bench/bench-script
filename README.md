@@ -24,9 +24,9 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 ## NEWS
 
 🔥 **Latest Updates**:
-- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/02] Release of `release_v2501` dataset.
-- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/01] Release of `release_v2406` dataset, now including answers and explanations with enhanced quality.
-- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png) [2024/06] Initial public release of `FAMMA` benchmark (based on the `release_v2406` dataset), along with our paper: [FAMMA: A Benchmark for Financial Domain Multilingual Multimodal Question Answering](https://arxiv.org/abs/2410.04526).
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/02] Release of `release_livepro` dataset.
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/01] Release of `release_basic` dataset, now including answers and explanations with enhanced quality.
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png) [2024/06] Initial public release of `FAMMA` benchmark (based on the `release_basic` dataset), along with our paper: [FAMMA: A Benchmark for Financial Domain Multilingual Multimodal Question Answering](https://arxiv.org/abs/2410.04526).
 
 
 
@@ -37,11 +37,11 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 
 ### Live Benchmarking Concept
 
-In addition to the baseline dataset (`release_v2406` that contains 1935 questions), `FAMMA` provides a "live" benchmark for evaluating financial analysis capabilities of LLMs. The benchmark continuously collects new questions from real-world financial professionals, ensuring up-to-date and contamination-free evaluation. 
+In addition to the baseline dataset (`release_basic` that contains 1935 questions), `FAMMA` provides a "live" benchmark for evaluating financial analysis capabilities of LLMs. The benchmark continuously collects new questions from real-world financial professionals, ensuring up-to-date and contamination-free evaluation. 
 
 The "live" nature of FAMMA means:
 1. **Expert-Sourced Questions**: New questions are continuously proposed by financial experts, ensuring they have never been made public before and reflect real-world financial analysis scenarios. See [contributors](https://github.com/famma-bench/bench-script/blob/main/contributors.md).
-2. **Contamination Prevention**: Questions in the live set (at the moment `release_v2501`) have non-public answers and explanations.
+2. **Contamination Prevention**: Questions in the live set (at the moment `release_livepro`) have non-public answers and explanations.
 3. **Time-Based Evaluation**: Models can be evaluated on questions from specific time periods.
 4. **Domain Coverage**: Questions span across different financial topics and complexity levels, curated by domain experts.
 
@@ -50,8 +50,8 @@ The "live" nature of FAMMA means:
 
 FAMMA is continuously updated with new questions. We provide different versions of the dataset:
 
-* `release_v2406`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
-* `release_v2501`: The release containing 100 questions, created by invited experts. Only the questions are provided.
+* `release_basic`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
+* `release_livepro`: The release containing 103 questions, created by invited experts. Only the questions are provided.
 
 You can specify the dataset version when downloading, see [Downloading Dataset](#downloading-dataset) for more details.
 
@@ -76,7 +76,7 @@ To download the dataset, run the following command:
 ```bash
 python step_1_download_dataset.py \
     --hf_dir "weaverbirdllm/famma" \
-    --split "release_v2406" \ # or "release_v2501" or None to download the live set
+    --split "release_basic" \ # or "release_livepro" or None to download the whole set
     --save_dir "./hf_data"
 ```
 
@@ -98,8 +98,8 @@ Each sample in the dataset contains:
 - options: the specific query being asked.
 - image_1- image_7: directories of images referenced in the context or question.
 - image_type: type of the image, e.g., chart, table, screenshot.
-- answers: a concise and accurate response. (public on `release_v2406`, non-public on the live set `release_v2501`)
-- explanation: a detailed justification for the answer. (public on `release_v2406`, non-public on the live set `release_v2501`)
+- answers: a concise and accurate response. (public on `release_basic`, non-public on the live set `release_livepro`)
+- explanation: a detailed justification for the answer. (public on `release_basic`, non-public on the live set `release_livepro`)
 - topic_difficulty: a measure of the question's complexity based on the level of reasoning required.
 - question_type: categorized as either multiple-choice or open-ended.
 - subfield: the specific area of expertise to which the question belongs, categorized into eight subfields.
@@ -107,7 +107,7 @@ Each sample in the dataset contains:
 - main_question_id: a unique identifier under the same language subset for the question within its context; questions with the same context share the same ID.
 - sub_question_id: a unique identifier for the question within its corresponding main question.
 - is_arithmetic: whether the question is an arithmetic question that needs heavy calculation.
-- ans_image_1 - ans_image_6: (public on `release_v2406`, non-public on the live set `release_v2501`)
+- ans_image_1 - ans_image_6: (public on `release_basic`, non-public on the live set `release_livepro`)
 
 ## Custom LLM Evaluation
 

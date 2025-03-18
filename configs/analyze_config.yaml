@@ -1,6 +1,6 @@
 runner_name: analyzer
 
 data:
-  data_dir: ./ddb_storage/claude_35_v2501_evaluated_by_gpt4o_with_arithmetic_flag.json
-  model_name_to_eval: claude_v2501_v2
+  data_dir: ./ddb_storage/gemini-2.0-flash-thinking_evaluated_by_gemini.json
+  model_name_to_eval: gemini-2.0-flash-thinking_v2406_v2
   save_question_ids: null
