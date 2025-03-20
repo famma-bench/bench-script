@@ -3,3 +3,4 @@ easyllm_kit
 datasets
 tiktoken
 dictdatabase
+json-repair

@@ -5,6 +5,7 @@ import base64
 from easyllm_kit.utils import get_logger, extract_json_from_text
 from typing import Optional, List, Union, Dict
 from pathlib import Path
+import json_repair
 
 logger = get_logger('famma', 'famma.log')
 
@@ -30,12 +31,12 @@ def _handle_ocr(ocr_model, images: List[str], prompt: str) -> str:
         temp_img_path = f"temp_img_{i}.jpg"
         with open(temp_img_path, "wb") as f:
             f.write(img_bytes)
-        
+
         # Perform OCR on jpg file
         ocr_result = ocr_model.ocr(temp_img_path)
-        ocr_text = f'\n <image_{i+1}> OCR result: '.join([line[1][0] for res in ocr_result for line in res])
+        ocr_text = f'\n <image_{i + 1}> OCR result: '.join([line[1][0] for res in ocr_result for line in res])
         prompt = f"{prompt}\n{ocr_text}"
-        
+
         # Clean up temporary file
         os.remove(temp_img_path)
     return prompt
@@ -80,7 +81,7 @@ def generate_response_from_llm(
     if model.model_name in ['qwen', 'qwen_vl']:
         response = model.generate(input_prompt, image_dir=images)
         try:
-            return json.loads(response)["choices"][0]["message"]["content"]
+            return json_repair.loads(response)["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError) as e:
             raise ValueError(f"Failed to parse Qwen model response: {e}")
     elif model.model_name == 'gemini' and not model.model_config.use_litellm_api:
@@ -102,7 +103,7 @@ def safe_parse_response(response_text, question_id_list):
     """
     # First try to parse as JSON
     try:
-        response_dict = json.loads(response_text)
+        response_dict = json_repair.loads(response_text)
     except json.JSONDecodeError:
         response_dict = extract_json_from_text(response_text)
     if response_dict.get('result', None) == 'error parsing':
