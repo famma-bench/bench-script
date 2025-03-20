@@ -36,7 +36,7 @@ class GenerationRunner(Runner):
         self.target_db = initialize_database(output_db=self.target_db_name)
 
         self.use_pot = self.model_config.get('use_pot', False)
-
+        self.is_reasoning_model = self.model_config.get('is_reasoning_model', False)
         self.ocr_model = None
         self.use_ocr = self.model_config.get('use_ocr', False)
         if self.use_ocr:
@@ -153,7 +153,6 @@ class GenerationRunner(Runner):
         # Collect images from the first sub-question
         # parent_dir is the parent directory of the dataset - self.data_config.data_dir
         parent_dir = os.path.dirname(self.data_config.data_dir)
-
         images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir)
 
         sub_questions = []
@@ -185,7 +184,7 @@ class GenerationRunner(Runner):
             )
 
         model_output = generate_response_from_llm(self.llm, prompt, images, use_ocr=self.use_ocr, ocr_model=self.ocr_model)
-        model_response = safe_parse_response(model_output, question_id_list)
+        model_response = safe_parse_response(model_output, question_id_list,is_reasoning_model=self.is_reasoning_model)
 
         return model_response
 
@@ -211,10 +210,17 @@ class GenerationRunner(Runner):
 
                     # Create a JSON object with the original input data and the model response
                     input_data_with_response = group.iloc[idx].to_dict()
-                    input_data_with_response.update({
-                        'model_answer': model_response[output_key]['answer'],
-                        'model_explanation': model_response[output_key]['explanation']
-                    })
+                    if self.is_reasoning_model:
+                        input_data_with_response.update({
+                            'model_answer': model_response[output_key].get('answer', ''),
+                            'model_explanation': model_response[output_key].get('explanation', ''),
+                            'model_reasoning': model_response.get('reasoning_content', '')
+                        })
+                    else:
+                        input_data_with_response.update({
+                            'model_answer': model_response[output_key].get('answer', ''),
+                            'model_explanation': model_response[output_key].get('explanation', '')
+                        })
 
                     # Store the response in the subquestion_responses dictionary
                     subquestion_responses[output_key] = input_data_with_response

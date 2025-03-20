@@ -5,6 +5,8 @@ import base64
 from easyllm_kit.utils import get_logger, extract_json_from_text
 from typing import Optional, List, Union, Dict
 from pathlib import Path
+import json_repair
+
 
 logger = get_logger('famma', 'famma.log')
 
@@ -87,11 +89,12 @@ def generate_response_from_llm(
         message = [input_prompt, images]
         return model.generate(message)
     else:
-        message = _prepare_litellm_message(input_prompt, images)
-        return model.generate(message)
+        # message = _prepare_litellm_message(input_prompt, images)
+        # return model.generate(message)
+        return None
 
 
-def safe_parse_response(response_text, question_id_list):
+def safe_parse_response(response, question_id_list,is_reasoning_model):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.
     Args:
@@ -101,10 +104,25 @@ def safe_parse_response(response_text, question_id_list):
         Dictionary mapping question IDs to their answers and explanations
     """
     # First try to parse as JSON
+
+    # 初始化响应字典
+    response_dict = {}
+
+    if is_reasoning_model:
+        reasoning_content = response[0]
+        content = response[1]
+        response_dict['reasoning_content'] = reasoning_content  # 使用新字段名
+    else:
+        content = response
+
     try:
-        response_dict = json.loads(response_text)
+        # 解析主要内容
+        parsed_data = json_repair.loads(content)
+        if isinstance(parsed_data, dict):
+            response_dict.update(parsed_data)
     except json.JSONDecodeError:
-        response_dict = extract_json_from_text(response_text)
+        response_dict = extract_json_from_text(content)
+
     if response_dict.get('result', None) == 'error parsing':
         # If JSON parsing fails, use regex
         logger.info('Start to using regex to extract answers.')
@@ -114,7 +132,7 @@ def safe_parse_response(response_text, question_id_list):
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
             pattern = rf'"{question_id}"\s*:\s*\{{\s*"answer"\s*:\s*"(.*?)"\s*,\s*"explanation"\s*:\s*"(.*?)"\s*\}}'
 
-            match = re.search(pattern, response_text)
+            match = re.search(pattern, content)
             if match:
                 answer, explanation = match.groups()
                 parsed_response[question_id] = {
@@ -127,7 +145,7 @@ def safe_parse_response(response_text, question_id_list):
                     logger.warning(f"Save the unparsed text in 'explanation' for question {question_id} in response")
                     parsed_response[question_id] = {
                         "answer": "",
-                        "explanation": response_text
+                        "explanation": content
                     }
                 else:
                     parsed_response[question_id] = {
@@ -136,10 +154,12 @@ def safe_parse_response(response_text, question_id_list):
                         "unparsed_text": ""
                     }
 
+        # 保留推理内容
+        if is_reasoning_model:
+            parsed_response['reasoning_content'] = reasoning_content
         if not parsed_response:
             logger.warning(
-                "Could not parse any responses. Response text: %s", response_text)
-
+                "Could not parse any responses. Response text: %s", content)
         return parsed_response
     else:
         return response_dict
