@@ -36,7 +36,7 @@ class GenerationRunner(Runner):
         self.target_db = initialize_database(output_db=self.target_db_name)
 
         self.use_pot = self.model_config.get('use_pot', False)
-
+        self.is_reasoning_model = self.model_config.get('is_reasoning_model', False)
         self.ocr_model = None
         self.use_ocr = self.model_config.get('use_ocr', False)
         if self.use_ocr:
@@ -213,7 +213,8 @@ class GenerationRunner(Runner):
                     input_data_with_response = group.iloc[idx].to_dict()
                     input_data_with_response.update({
                         'model_answer': model_response[output_key]['answer'],
-                        'model_explanation': model_response[output_key]['explanation']
+                        'model_explanation': model_response[output_key]['explanation'],
+                        'model_reasoning': model_response[output_key].get('reasoning_content', '')
                     })
 
                     # Store the response in the subquestion_responses dictionary

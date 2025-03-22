@@ -72,45 +72,67 @@ def merge_ocr_text_into_dataset(json_path, image_base_path, output_csv_path):
         'french': PaddleOCR(use_angle_cls=True, lang='fr')
     }
     
-    # Process each question
-    for main_key, main_value in tqdm(data.items(), desc="Processing main questions"):
-        for question_id, question_data in main_value.items():
-            # Get the language for OCR
-            language = question_data.get('language', 'english')
-            ocr_model = ocr_models.get(language, ocr_models['english'])
+    # Group questions by language and main_question_id
+    questions_by_group = {}
+    for question_data in data:
+        language = question_data.get('language', 'english')
+        main_question_id = question_data.get('main_question_id')
             
-            # Initialize OCR text for this question
-            ocr_texts = []
+        group_key = f"{language}_{main_question_id}"
+        if group_key not in questions_by_group:
+            questions_by_group[group_key] = []
+        
+        questions_by_group[group_key].append(question_data)
+    
+    # Process each group of questions
+    for group_key, question_group in questions_by_group.items():
+        language = question_group[0].get('language', 'english')
+        ocr_model = ocr_models.get(language, ocr_models['english'])
+        
+        # Get all unique images from the first subquestion
+        first_subquestion = None
+        for question in question_group:
+            if question.get('sub_question_id') == '1' or question.get('sub_question_id') == 1:
+                first_subquestion = question
+                break
+        
+        if not first_subquestion:
+            first_subquestion = question_group[0]  # Fallback to first question if no sub_question_id 1
             
-            # Check if there are images to process
-            for i in range(1, 8):  # Assuming up to 7 images
-                image_key = f'image_{i}'
-                image_path = question_data.get(image_key)
-                
-                if image_path and image_path != "None":
-                    full_image_path = os.path.join(image_base_path, image_path)
-                    if os.path.exists(full_image_path):
-                        ocr_text = perform_ocr(full_image_path, ocr_model)
-                        if ocr_text:
-                            ocr_texts.append(ocr_text)
+        # Extract OCR text from images in the first subquestion
+        ocr_texts = []
+        for i in range(1, 8):  # Assuming up to 7 images
+            image_key = f'image_{i}'
+            image_path = first_subquestion.get(image_key)
             
-            # Merge OCR text into the context
-            if ocr_texts:
-                combined_ocr = " ".join(ocr_texts)
-                original_context = question_data.get('context', '')
-                if original_context == 'nan' or not original_context:
-                    question_data['context'] = f"<ocr>{combined_ocr}</ocr>"
-                else:
-                    question_data['context'] = f"{original_context} <ocr>{combined_ocr}</ocr>"
+            if image_path and image_path != "None":
+                full_image_path = os.path.join(image_base_path, image_path)
+                if os.path.exists(full_image_path):
+                    ocr_text = perform_ocr(full_image_path, ocr_model)
+                    if ocr_text:
+                        ocr_texts.append(f"image_{i} ocr text: {ocr_text}")
+        
+        # If we have OCR text, update only the first subquestion's context
+        if ocr_texts:
+            combined_ocr = "/n".join(ocr_texts)
             
-            # Add the processed question to our list
-            all_questions.append(question_data)
+            for question in question_group:
+                if question.get('sub_question_id') == '1' or question.get('sub_question_id') == 1:
+                    original_context = question.get('context', '')
+                    if original_context == 'nan' or pd.isna(original_context) or not original_context:
+                        question['context'] = f"<ocr>{combined_ocr}</ocr>"
+                    else:
+                        question['context'] = f"{original_context} /n <ocr>{combined_ocr}</ocr>"
+        
+        # Add all questions from this group to our list
+        all_questions.extend(question_group)
+        logger.info(f'{group_key} processed')
     
     # Convert to DataFrame
     df = pd.DataFrame(all_questions)
     
     # Save as CSV
-    df.to_csv(output_csv_path, index=False)
+    df.to_csv(output_csv_path, index=False, header=True)
     logger.info(f"Updated dataset saved to {output_csv_path}")
     
     # Also save as JSON for reference
@@ -119,8 +141,8 @@ def merge_ocr_text_into_dataset(json_path, image_base_path, output_csv_path):
     logger.info(f"Updated JSON saved to {json_output_path}")
 
 if __name__ == "__main__":
-    json_path = "../ddb_storage/o1_ans_release_v2406_with_arithmetic_flag.json"
-    image_base_path = "../images_release_v2406"
-    output_csv_path = "../ddb_storage/o1_ans_release_v2406_with_ocr.csv"
+    json_path = "../hf_data/release_basic.json"
+    image_base_path = "../hf_data/"
+    output_csv_path = "../ddb_storage/release_basic_txt.csv"
     
     merge_ocr_text_into_dataset(json_path, image_base_path, output_csv_path) 

@@ -10,7 +10,7 @@ class ReleaseVersion(str, Enum):
     RELEASE_V1_TRAIN = 'release_basic_train'
     RELEASE_V1_TEST = 'release_basic_test'
     RELEASE_V2 = 'release_livepro'
-    RELEASE_V3 = 'release_v2507'
+    RELEASE_V3 = 'release_basic_txt'
     
     @classmethod
     def to_short_name(cls, release: str) -> str:

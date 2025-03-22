@@ -92,24 +92,50 @@ def generate_response_from_llm(
         return model.generate(message)
 
 
-def safe_parse_response(response_text, question_id_list):
+def safe_parse_response(response_text, question_id_list, reasoning_attached=False):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.
     Args:
         response_text: The text response from the model
         question_id_list: List of question IDs to look for
+        reasoning_attached: whether the reasoning is attached in the response text
     Returns:
         Dictionary mapping question IDs to their answers and explanations
     """
-    # First try to parse as JSON
+    # Initialize response dictionary
+    response_dict = {}
+    
+    # Extract reasoning if attached
+    reasoning = ""
+    if reasoning_attached and '<reason>' in response_text and '</reason>' in response_text:
+        try:
+            reasoning = response_text.split('<reason>')[-1].split('</reason>')[0]
+            response_text = response_text.split('<reason>')[0]
+            response_dict['reasoning'] = reasoning
+        except Exception as e:
+            logger.warning(f"Error extracting reasoning: {e}")
+            # Continue with parsing even if reasoning extraction fails
+    
+    # Try to parse as JSON
     try:
-        response_dict = json_repair.loads(response_text)
+        parsed_json = json_repair.loads(response_text)
+        response_dict.update(parsed_json)
     except json.JSONDecodeError:
-        response_dict = extract_json_from_text(response_text)
+        try:
+            extracted_json = extract_json_from_text(response_text)
+            response_dict.update(extracted_json)
+        except Exception as e:
+            logger.warning(f"Error extracting JSON: {e}")
+            response_dict['result'] = 'error parsing'
+    
+    # If JSON parsing fails, use regex
     if response_dict.get('result', None) == 'error parsing':
-        # If JSON parsing fails, use regex
-        logger.info('Start to using regex to extract answers.')
+        logger.info('Starting to use regex to extract answers.')
         parsed_response = {}
+        
+        # Add reasoning to parsed response if it exists
+        if reasoning:
+            parsed_response['reasoning'] = reasoning
 
         for idx, question_id in enumerate(question_id_list):
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
@@ -142,8 +168,12 @@ def safe_parse_response(response_text, question_id_list):
                 "Could not parse any responses. Response text: %s", response_text)
 
         return parsed_response
-    else:
-        return response_dict
+    
+    # Ensure reasoning is preserved in the final output
+    if reasoning and 'reasoning' not in response_dict:
+        response_dict['reasoning'] = reasoning
+        
+    return response_dict
 
 
 def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):

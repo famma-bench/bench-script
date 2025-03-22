@@ -225,7 +225,7 @@ def prepare_dataset(csv_path, image_parent_dir, version):
         # Add image columns - only if this is the first sub-question
         for i in range(1, 8):
             image_key = f'image_{i}'
-            if is_first_subquestion:
+            if is_first_subquestion and version.split('_')[-1] != 'txt':
                 image_name = row[image_key]
                 if pd.notna(image_name):
                     image_name = image_name.split('.')[0]
@@ -261,7 +261,7 @@ def prepare_dataset(csv_path, image_parent_dir, version):
         # Add answer image columns - only if this is the first sub-question
         for i in range(1, 7):
             ans_image_key = f'ans_image_{i}'
-            if is_first_subquestion:
+            if is_first_subquestion and version.split('_')[-1] != 'txt':
                 image_name = row[ans_image_key]
                 if pd.notna(image_name):
                     image_name = image_name.split('.')[0]
