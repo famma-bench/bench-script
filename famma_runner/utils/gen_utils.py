@@ -92,30 +92,29 @@ def generate_response_from_llm(
         return model.generate(message)
 
 
-def safe_parse_response(response_text, question_id_list, reasoning_attached=False):
+def safe_parse_response(response, question_id_list):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.
     Args:
-        response_text: The text response from the model
+        response: The text response from the model, can be a string or a dictionary
         question_id_list: List of question IDs to look for
-        reasoning_attached: whether the reasoning is attached in the response text
     Returns:
         Dictionary mapping question IDs to their answers and explanations
     """
     # Initialize response dictionary
     response_dict = {}
+
+    # If reasoning is attached, response should be a dictionary
+    if isinstance(response, dict):
+        response_text = response.get('content', '')
+        reasoning = response.get('reasoning_content', '')
+        response_dict['reasoning'] = reasoning
+    else:
+        response_text = response
     
-    # Extract reasoning if attached
-    reasoning = ""
-    if reasoning_attached and '<reason>' in response_text and '</reason>' in response_text:
-        try:
-            reasoning = response_text.split('<reason>')[-1].split('</reason>')[0]
-            response_text = response_text.split('<reason>')[0]
-            response_dict['reasoning'] = reasoning
-        except Exception as e:
-            logger.warning(f"Error extracting reasoning: {e}")
-            # Continue with parsing even if reasoning extraction fails
-    
+    if response_text == '':
+        response_dict['result'] = 'error parsing'
+
     # Try to parse as JSON
     try:
         parsed_json = json_repair.loads(response_text)
@@ -132,10 +131,6 @@ def safe_parse_response(response_text, question_id_list, reasoning_attached=Fals
     if response_dict.get('result', None) == 'error parsing':
         logger.info('Starting to use regex to extract answers.')
         parsed_response = {}
-        
-        # Add reasoning to parsed response if it exists
-        if reasoning:
-            parsed_response['reasoning'] = reasoning
 
         for idx, question_id in enumerate(question_id_list):
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
@@ -146,7 +141,7 @@ def safe_parse_response(response_text, question_id_list, reasoning_attached=Fals
                 answer, explanation = match.groups()
                 parsed_response[question_id] = {
                     "answer": answer.strip(),
-                    "explanation": explanation.strip()
+                    "explanation": explanation.strip(),
                 }
             else:
                 logger.warning(f"Could not find match for question {question_id} in response")
@@ -159,8 +154,7 @@ def safe_parse_response(response_text, question_id_list, reasoning_attached=Fals
                 else:
                     parsed_response[question_id] = {
                         "answer": "",
-                        "explanation": "",
-                        "unparsed_text": ""
+                        "explanation": ""
                     }
 
         if not parsed_response:
@@ -168,10 +162,6 @@ def safe_parse_response(response_text, question_id_list, reasoning_attached=Fals
                 "Could not parse any responses. Response text: %s", response_text)
 
         return parsed_response
-    
-    # Ensure reasoning is preserved in the final output
-    if reasoning and 'reasoning' not in response_dict:
-        response_dict['reasoning'] = reasoning
         
     return response_dict
 

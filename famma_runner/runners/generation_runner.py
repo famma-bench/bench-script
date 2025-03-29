@@ -211,11 +211,18 @@ class GenerationRunner(Runner):
 
                     # Create a JSON object with the original input data and the model response
                     input_data_with_response = group.iloc[idx].to_dict()
-                    input_data_with_response.update({
+                    
+                    # Always include model_answer and model_explanation
+                    response_update = {
                         'model_answer': model_response[output_key]['answer'],
-                        'model_explanation': model_response[output_key]['explanation'],
-                        'model_reasoning': model_response[output_key].get('reasoning_content', '')
-                    })
+                        'model_explanation': model_response[output_key]['explanation']
+                    }
+
+                    # Only include model_reasoning if self.is_reasoning_model is True
+                    if self.is_reasoning_model and 'reasoning' in model_response:
+                        response_update['model_reasoning'] = model_response['reasoning']
+                
+                    input_data_with_response.update(response_update)
 
                     # Store the response in the subquestion_responses dictionary
                     subquestion_responses[output_key] = input_data_with_response

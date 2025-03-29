@@ -33,7 +33,7 @@ class MyCustomModel(LLM):
         if hasattr(response.choices[0].message, 'reasoning_content'):
             reasoning_content = response.choices[0].message.reasoning_content
         content = response.choices[0].message.content
-        return  content + '<reason>' + reasoning_content + '</reason>'
+        return  {'content': content, 'reasoning_content': reasoning_content}
 
 
 if __name__ == "__main__":
