@@ -5,7 +5,7 @@ import ast
 from pathlib import Path
 from omegaconf import OmegaConf
 from easyllm_kit.utils import get_logger
-from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER
+from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER, encode_answer
 from PIL import Image
 
 logger = get_logger('dataset_maker', 'question_maker.log')
@@ -164,8 +164,7 @@ def validate_columns(df):
 
     return True
 
-
-def prepare_dataset(csv_path, image_parent_dir, version):
+def prepare_dataset(csv_path, image_parent_dir, version, mask_answer=False):
     """
     Prepare dataset from CSV and convert it to HuggingFace format.
     
@@ -248,7 +247,11 @@ def prepare_dataset(csv_path, image_parent_dir, version):
 
         sample[DC.IMAGE_TYPE] = row[DC.IMAGE_TYPE]
 
-        sample[DC.ANSWER] = row[DC.ANSWER]
+        if mask_answer:
+            sample[DC.ANSWER] = encode_answer(row[DC.ANSWER])
+            sample[DC.EXPLANATION] = encode_answer(row[DC.EXPLANATION])
+        else:
+            sample[DC.ANSWER] = row[DC.ANSWER]
         sample[DC.EXPLANATION] = row[DC.EXPLANATION]
         sample[DC.TOPIC_DIFFICULTY] = row[DC.TOPIC_DIFFICULTY]
         sample[DC.QUESTION_TYPE] = row[DC.QUESTION_TYPE]
@@ -272,6 +275,7 @@ def prepare_dataset(csv_path, image_parent_dir, version):
                     if full_path is not None:
                         # Read the image file into PIL Image
                         img = Image.open(full_path)
+                        # we dont need to encode the answer image as we assume we will try to avoid the answer image in the fuure 
                         # Store the PIL Image object directly
                         sample[ans_image_key] = img
                     else:

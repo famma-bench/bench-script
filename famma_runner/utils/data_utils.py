@@ -6,10 +6,11 @@ from datasets import load_dataset
 from easyllm_kit.utils import save_json
 import numpy as np
 import pandas as pd
+import base64
 from famma_runner.utils.data_const import DatasetColumns as DC
 
 
-def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release_v2406"):
+def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release_v2406", decode_answers=False):
     """
     Convert data in Dataset format to list format.
     Saves images locally and returns their paths.
@@ -18,6 +19,7 @@ def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release
         dataset: HuggingFace dataset
         save_dir: Base directory to save images
         release_version: Version string to append to images folder
+        decode_answers: If True, decode base64-encoded answers
     """
     json_list = []
     # Create images directory if it doesn't exist
@@ -41,11 +43,18 @@ def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release
 
                 # Store the relative path in the JSON
                 sample_res[key] = os.path.join(f"images_{release_version}", image_filename)
+            elif decode_answers and (key == 'answers' or key == 'explanation') and isinstance(value, str):
+                # Decode base64-encoded answers if flag is set
+                try:
+                    decoded_value = base64.b64decode(value).decode('utf-8')
+                    sample_res[key] = decoded_value
+                except:
+                    # If decoding fails, keep the original value
+                    sample_res[key] = value
             else:
                 sample_res[key] = value
         json_list.append(sample_res)
     return json_list
-
 
 def download_data(hf_dir, split=None, save_dir="./hf_data", from_local=False):
     """
@@ -181,4 +190,16 @@ def sample_questions(df, num_english_main_questions=40, num_chinese_main_questio
 
     return sampled_df, res_df
 
+
+def encode_answer(text):
+    """Encode text to base64"""
+    if pd.isna(text):
+        return ""
+    return base64.b64encode(str(text).encode('utf-8')).decode('utf-8')
+
+def decode_answer(text):
+    """Decode text from base64"""
+    if pd.isna(text):
+        return ""
+    return base64.b64decode(text).decode('utf-8')
 
