@@ -7,7 +7,7 @@ from omegaconf import OmegaConf
 from easyllm_kit.utils import get_logger
 from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER, encode_answer
 from PIL import Image
-
+import re
 logger = get_logger('dataset_maker', 'question_maker.log')
 
 
@@ -103,9 +103,15 @@ def validate_columns(df):
                                .replace(""", '"')  # Replace curly quotes
                 .replace(""", '"')  # Replace another curly quotes
                                )
-            # make the options = ['A. xxx', 'B. xxx', 'C. xxx', 'D. xxx']
+            # Parse the options string into a list
             options_cleaned = eval(options_cleaned)  # read it as a list
-            parsed_options = [f"{chr(65 + i)}. {option.strip()}" for i, option in enumerate(options_cleaned)]
+            
+            # Check if options are already in the form of ['A. xxx', 'B. xxx', etc.]
+            if all(isinstance(opt, str) and re.match(r'^[A-Z]\.\s', opt.strip()) for opt in options_cleaned):
+                parsed_options = options_cleaned
+            else:
+                # Convert to the format ['A. xxx', 'B. xxx', 'C. xxx', 'D. xxx']
+                parsed_options = [f"{chr(65 + i)}. {option.strip()}" for i, option in enumerate(options_cleaned)]
 
         except (ValueError, SyntaxError):
             # Second try: manual parsing
@@ -252,7 +258,7 @@ def prepare_dataset(csv_path, image_parent_dir, version, mask_answer=False):
             sample[DC.EXPLANATION] = encode_answer(row[DC.EXPLANATION])
         else:
             sample[DC.ANSWER] = row[DC.ANSWER]
-        sample[DC.EXPLANATION] = row[DC.EXPLANATION]
+            sample[DC.EXPLANATION] = row[DC.EXPLANATION]
         sample[DC.TOPIC_DIFFICULTY] = row[DC.TOPIC_DIFFICULTY]
         sample[DC.QUESTION_TYPE] = row[DC.QUESTION_TYPE]
         sample[DC.SUBFIELD] = row[DC.SUBFIELD]
@@ -377,12 +383,14 @@ def main():
     for entry in config.data.source_csv_dir:
         version = entry['version']
         csv_path = entry['path']
+        mask_answer = entry['mask_answer']
 
         logger.info(f"Preparing dataset for version: {version}")
         dataset = prepare_dataset(
             csv_path=csv_path,
             image_parent_dir=config.data.source_image_dir,
-            version=version
+            version=version,
+            mask_answer=mask_answer
         )
 
         # Add to DatasetDict with version as split name

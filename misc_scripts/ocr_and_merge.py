@@ -130,6 +130,15 @@ def merge_ocr_text_into_dataset(json_path, image_base_path, output_csv_path):
     
     # Convert to DataFrame
     df = pd.DataFrame(all_questions)
+
+    df['release'] = 'release_livepro_txt'
+    # Map the release version to a short name and append it to the question_id
+    from famma_runner.utils import ReleaseVersion
+    release_version = df['release'].iloc[0]  # Get the release version
+    short_name = ReleaseVersion.to_short_name(release_version)
+    
+    # Convert question_id to string and append the short name
+    df['question_id'] = df['question_id'].astype(str) + '_' + short_name
     
     # Save as CSV
     df.to_csv(output_csv_path, index=False, header=True)
@@ -141,8 +150,12 @@ def merge_ocr_text_into_dataset(json_path, image_base_path, output_csv_path):
     logger.info(f"Updated JSON saved to {json_output_path}")
 
 if __name__ == "__main__":
-    json_path = "../hf_data/release_basic.json"
+    # json_path = "../hf_data/release_basic.json"
+    # image_base_path = "../hf_data/"
+    # output_csv_path = "../ddb_storage/release_basic_txt.csv"
+
+    json_path = "../hf_data/release_livepro.json"
     image_base_path = "../hf_data/"
-    output_csv_path = "../ddb_storage/release_basic_txt.csv"
+    output_csv_path = "../ddb_storage/release_livepro_txt.csv"
     
     merge_ocr_text_into_dataset(json_path, image_base_path, output_csv_path) 

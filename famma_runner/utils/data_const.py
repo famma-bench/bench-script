@@ -7,20 +7,17 @@ class ReleaseVersion(str, Enum):
     Maps release versions to their short names.
     """
     RELEASE_V1 = 'release_basic'
-    RELEASE_V1_TRAIN = 'release_basic_train'
-    RELEASE_V1_TEST = 'release_basic_test'
     RELEASE_V2 = 'release_livepro'
     RELEASE_V3 = 'release_basic_txt'
-    
+    RELEASE_V4 = 'release_livepro_txt'
     @classmethod
     def to_short_name(cls, release: str) -> str:
         """Convert release version to short name"""
         mapping = {
             cls.RELEASE_V1: 'r1',
-            cls.RELEASE_V1_TRAIN: 'r1_train',
-            cls.RELEASE_V1_TEST: 'r1_test',
             cls.RELEASE_V2: 'r2',
             cls.RELEASE_V3: 'r3',
+            cls.RELEASE_V4: 'r4',
         }
         return mapping.get(release, release)
     
@@ -29,10 +26,9 @@ class ReleaseVersion(str, Enum):
         """Convert short name back to release version"""
         mapping = {
             'r1': cls.RELEASE_V1,
-            'r1_train': cls.RELEASE_V1_TRAIN,
-            'r1_test': cls.RELEASE_V1_TEST,
             'r2': cls.RELEASE_V2,
             'r3': cls.RELEASE_V3,
+            'r4': cls.RELEASE_V4,
         }
         return mapping.get(short_name, short_name)
 

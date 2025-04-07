@@ -5,17 +5,20 @@ data:
   source_csv_dir:
     - version: release_basic
       path: ./source_data/FAMMA v1203 - merge.csv
-      mask_answers: false  # Keep answers visible in training set
+      mask_answer: false  # Keep answers visible in training set
     - version: release_livepro
       path: ./source_data/FAMMA Live - live_2501_v2_ans.csv
-      mask_answers: true   # Mask answers in test set
+      mask_answer: true   # Mask answers in test set
     - version: release_basic_txt
       path: ./source_data/release_basic_txt.csv
-      mask_answers: false
+      mask_answer: false
+    - version: release_livepro_txt
+      path: ./source_data/release_livepro_txt.csv
+      mask_answer: false
   source_image_dir: /Users/siqiao/Downloads/
   local_cache_dir: ./cache
   local_cache: False
 hf:
   repo_name: weaverbirdllm/famma
   version: 2.0
-  token: xxx
+  token: xx
