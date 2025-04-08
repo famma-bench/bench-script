@@ -68,6 +68,7 @@ Clone the repository and install the dependencies:
 git clone https://github.com/famma-bench/bench-script.git
 cd bench-script
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Downloading Dataset
