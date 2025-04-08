@@ -24,7 +24,7 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 ## NEWS
 
 🔥 **Latest Updates**:
-- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/03] Release of `release_basic_txt`, a purely textual dataset that utilizes OCR to extract multimodal information and convert it into textual context for each question in `release_basic`.
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/03] Release of `release_basic_txt` and `release_livepro_txt`, two purely textual datasets that utilize OCR to extract multimodal information and convert it into textual context for each question in `release_basic` and `release_livepro`, respestively.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/02] Release of `release_livepro` dataset.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/01] Release of `release_basic` dataset, now including answers and explanations with enhanced quality.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png) [2024/06] Initial public release of `FAMMA` benchmark (based on the `release_basic` dataset), along with our paper: [FAMMA: A Benchmark for Financial Domain Multilingual Multimodal Question Answering](https://arxiv.org/abs/2410.04526).
@@ -51,9 +51,10 @@ The "live" nature of FAMMA means:
 
 FAMMA is continuously updated with new questions. We provide different versions of the dataset:
 
-* `release_basic`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
-* `release_livepro`: The release containing 103 questions, created by invited experts. Only the questions are provided.
-* `release_basic_txt`: The release containing 1935 questions, a purely textual dataset that utilizes OCR to extract multimodal information and convert it into textual context for each question in `release_basic`.
+- `release_basic`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
+- `release_basic_txt`: A textual version of `release_basic`, where OCR has been used to extract multimodal information and convert it into contextual text for each question.
+- `release_livepro`: The release containing 103 questions, created by invited experts. Only the questions are provided.
+- `release_livepro_txt`: A textual version of `release_livepro`, generated using OCR to extract and represent the questions in text format.
 
 You can specify the dataset version when downloading, see [Downloading Dataset](#downloading-dataset) for more details.
 
