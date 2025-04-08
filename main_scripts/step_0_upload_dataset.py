@@ -8,7 +8,7 @@ from easyllm_kit.utils import get_logger
 from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER, encode_answer
 from PIL import Image
 import re
-logger = get_logger('dataset_maker', 'question_maker.log')
+logger = get_logger('dataset_maker', '../question_maker.log')
 
 
 def validate_question_id(df):
@@ -374,7 +374,7 @@ def main():
     Reads configuration from data_config.yaml.
     """
     # Load configuration
-    config = OmegaConf.load("configs/data_config.yaml")
+    config = OmegaConf.load("../configs/data_config.yaml")
 
     # Initialize DatasetDict
     dataset_dict = DatasetDict()

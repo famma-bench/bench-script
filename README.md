@@ -115,7 +115,7 @@ Each sample in the dataset contains:
 ## Custom LLM Evaluation
 
 One can customized a LLM and evaluate it on the `FAMMA` dataset. It involves two steps:
-1. Define a `generate` function for the LLM to generate the answer and explanation. See [custom_llm.py](./custom_llm.py) for more details.
+1. Define a `generate` function for the LLM to generate the answer and explanation. See [custom_llm.py](main_scripts/custom_llm.py) for more details.
 2. Define a yaml config for the LLM to load the model. See [custom_gen.yaml](./configs/custom_gen.yaml) for more details.
 
 Then the evaluation can be done with the same script (except specify the config file) as the default one.

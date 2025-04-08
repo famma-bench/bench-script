@@ -1,6 +1,7 @@
 from easyllm_kit.models.base import LLM
 
 
+
 # Define your custom model class
 @LLM.register("custom_llm")
 class MyCustomModel(LLM):
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     # Usage example
     from omegaconf import OmegaConf
 
-    config_dir = "configs/custom_gen.yaml"
+    config_dir = "../configs/custom_gen.yaml"
     config = OmegaConf.load(config_dir)
     # Build the LLM model
     llm_config = {'model_config': config.get('model', None),

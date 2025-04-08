@@ -128,7 +128,7 @@ class GenerationRunner(Runner):
 
         # If using custom model, load it from custom_llm.py
         if self.model_config.model_name == "custom_llm":
-            from custom_llm import MyCustomModel
+            pass
         llm = LLM.build_from_config(llm_config)
 
         return llm
