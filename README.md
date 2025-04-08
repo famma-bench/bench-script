@@ -79,6 +79,8 @@ To download the dataset, run the following command:
 
 
 ```bash
+cd main_scripts
+
 python step_1_download_dataset.py \
     --hf_dir "weaverbirdllm/famma" \
     --split "release_basic" \ # or "release_livepro" or None to download the whole set
@@ -92,6 +94,8 @@ Options:
 
 
 After downloading, the dataset will be saved in the local directory `./data` in json format. 
+
+An alternative example can be found at our interactive notebook [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/famma-bench/bench-script/blob/main/notebooks/FAMMA_1_dataset_inspection.ipynb) for exploring and analyzing the FAMMA dataset. This notebook provides a comprehensive walkthrough of dataset inspection, visualization, and analysis techniques. Try it directly in Google Colab to get hands-on experience with the dataset!
 
 ### Dataset Structure
 
