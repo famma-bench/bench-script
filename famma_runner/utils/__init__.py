@@ -5,8 +5,9 @@ from famma_runner.utils.data_const import LANGUAGE_ORDER
 from famma_runner.utils.gen_utils import collect_images_from_first_subquestion, safe_parse_response, \
     generate_response_from_llm
 from famma_runner.utils.prompt_utils import QuestionPrompt, JudgePrompt, ProgramOfThoughtsQuestionPrompt, \
-    QuestionThinkPrompt, JsonResponsePrompt, SingleQuestionGRPOPrompt   
-from famma_runner.utils.data_utils import order_by_language, sample_questions, encode_answer, decode_answer
+    QuestionThinkPrompt, JsonResponsePrompt, SingleQuestionGRPOPrompt
+from famma_runner.utils.data_utils import order_by_language, sample_questions, encode_answer, decode_answer, \
+    download_data
 from famma_runner.utils.eval_utils import calculate_accuracy
 
 __all__ = ['find_image_file',
@@ -26,5 +27,6 @@ __all__ = ['find_image_file',
            'sample_questions',
            'SingleQuestionGRPOPrompt',
            'encode_answer',
-           'decode_answer'
+           'decode_answer',
+           'download_data'
            ]
