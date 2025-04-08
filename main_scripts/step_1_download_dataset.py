@@ -25,7 +25,7 @@ def main():
     parser.add_argument(
         "--save_dir", 
         type=str, 
-        default="./hf_data",
+        default="../hf_data",
         help="Directory to save the downloaded JSON files"
     )
     
