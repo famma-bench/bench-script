@@ -5,7 +5,10 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 <a href="https://famma-bench.github.io/famma/"><img alt="Home Page" src="https://img.shields.io/badge/🌐-Home_Page-blue"></a> • <a href="https://huggingface.co/datasets/weaverbirdllm/famma"><img alt="Hugging Face" src="https://img.shields.io/badge/🤗-Dataset-ffce44?logo=huggingface"></a>
 </div>
 
-
+<div align="center">
+<a href='https://github.com/MShawon/github-clone-count-badge'><img alt='GitHub Clones' src='https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://gist.githubusercontent.com/famma-bench/2c7bc5087a5bcc7fb47fd1e3675d6b90/raw/clone.json&logo=github'></a>
+<img alt="ViewCount" src="https://views.whatilearened.today/views/github/famma-bench/bench-script.svg">
+</div>
 
 
 <div align="center">
