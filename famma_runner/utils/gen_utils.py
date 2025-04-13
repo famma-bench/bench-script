@@ -92,6 +92,50 @@ def generate_response_from_llm(
         return model.generate(message)
 
 
+def parse_reasoning_response(response):
+    """
+    Parse the response string to extract reasoning and answer.
+    
+    Args:
+        response: The text response from the model containing <think> tags and JSON answer
+        
+    Returns:
+        Dictionary containing:
+        - thinking_trajectory: The reasoning text
+        - answer: The answer from the JSON
+    """
+    response_dict = {}
+    
+    # Extract reasoning by removing the JSON part from the response
+    json_pattern = r'```json\s*({.*?})\s*```'
+    json_match = re.search(json_pattern, response, re.DOTALL)
+    
+    if json_match:
+        # Get the full response without the JSON part
+        json_start = json_match.start()
+        json_end = json_match.end()
+        
+        # Combine text before and after JSON (if any)
+        reasoning_text = response[:json_start].strip() + " " + response[json_end:].strip()
+        reasoning_text = reasoning_text.strip()
+        
+        if reasoning_text:
+            response_dict['thinking_trajectory'] = reasoning_text
+    else:
+        # If no JSON found, use the whole response as reasoning
+        response_dict['thinking_trajectory'] = response.strip()
+    
+    # Extract JSON answer
+    try:
+        answer_dict = extract_json_from_text(response)
+        response_dict.update(answer_dict)
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"Error parsing JSON answer: {e}")
+        response_dict['answer'] = ''
+    
+    return response_dict
+
+
 def safe_parse_response(response, question_id_list):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.

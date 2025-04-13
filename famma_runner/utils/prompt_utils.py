@@ -227,3 +227,98 @@ class JsonResponsePrompt(PromptTemplate):
             template=template,
             input_variables=['output_dict']
         )
+
+
+class QuestionParsingPrompt(PromptTemplate):
+    @classmethod
+    def init(cls):
+        _template = """You are a highly knowledgeable financial expert. 
+        I will provide you with text content from financial questions and their corresponding answers. Your task is to analyze and structure this content.
+
+        1. **Content Analysis**
+        - Review the provided text content of questions and their corresponding answers
+        - Identify and separate any sub-questions within main questions
+        - Ensure you capture all relevant information from the text
+
+        2. **Create a Structured Response for Each Question**
+        - **Context:** Provide a clear, self-contained restatement of the scenario in question-form. This should allow a reader to understand the context without needing the original text.
+        - **Question:** Quote the question exactly as provided (verbatim, with no omissions or re-phrasing).
+        - **Answer:** Include the exact answer as provided in the text.
+
+        Your response must be in a standard JSON format and should follow this structure:
+        ```json
+        {
+            "question_id": start with 1, 2, 3, ...
+            "question_type": "multiple-choice" or "open question", 
+            "context": "<context>",
+            "question": "<question>",
+            "answer": "<answer>"
+        }
+        ```
+
+        Please structure the questions and answers from the provided text content.
+        """
+        return cls(template=_template, input_variables=None)
+
+class DistillationPrompt(PromptTemplate):
+    @classmethod
+    def init(cls):
+        _template = """You are a highly knowledgeable financial expert. 
+        I give you a screenshot of questions and a screenshot of the ground truth answers. Please first extract and understand the questions and the ground truth answers, then generate a deep thinking process of how to solve the questions.
+        Please first have a step-by-step thinking process of how to approach the question, noted using <think> and </think> and then provide answer:
+        - For multiple-choice questions, return the option index A, B, C, D, etc.
+        - For open-ended questions, provide a concise and precise answer.
+
+        Your response must be in a standard JSON format and should follow this structure:
+        ```json 
+        {
+            "question": "<question>",
+            "thinking": "<thinking>",
+            "answer": "<answer>"
+        }
+        ```
+        """
+        return cls(template=_template, input_variables=None)
+
+
+class ReasoningDistillationPrompt(PromptTemplate):
+    @classmethod
+    def init(cls):
+        _template = """You are a financial expert with deep expertise in financial markets, accounting principles, and investment strategies. Given a context and a question (which may be open-ended or multiple-choice), your task is to generate a detailed, natural reasoning process to solve the problem.
+
+    Your reasoning should flow naturally, with different types of thinking interleaved as you work through the problem. Use the following tags as needed throughout your response:
+    - `<think>...</think>`: Use this for your general reasoning, analysis, and reflections. This includes:
+        * Identifying key variables and facts from the context
+        * Recalling relevant financial formulas and principles
+        * Structuring your approach to the problem
+        * Evaluating different perspectives and alternatives
+        * Verifying assumptions and checking your work
+    - `<python>...</python>`: When calculations would be helpful, include Python code with:
+        * Clear comments explaining your approach
+        * Step-by-step implementation
+        * The final output assigned to a variable named `result`
+    - `<search>...</search>`: When you need external information that might not be in the context, specify:
+        * What information you need to search for
+        * Why this information is necessary for solving the problem
+    - `<information>...</information>`: After a search request, present the information you would expect to find:
+        * Relevant data points or insights
+        * How this information connects to the problem
+    IMPORTANT: These tags should be naturally interleaved throughout your response as your thinking evolves. For example, you might start with some general thinking, then realize you need to search for information, incorporate that information into more thinking, use Python for calculations, and continue with further analysis.
+
+    - `<answer>...</answer>`: After your detailed reasoning process, provide your final answer. For multiple-choice questions, specify the option (e.g., "B"). For open-ended questions, give a concise, precise conclusion.
+
+    IMPORTANT: Your thinking process should be very long and explore multiple angles of the problem. Do not abbreviate your reasoning or skip steps. The more comprehensive and detailed your reasoning, the better.
+
+    Return the final output in the following JSON format:
+    ```json
+    {
+        "answer": "<concise final answer>"
+    }
+    ```
+
+    Now please do an EXTREMELY DETAILED and EXHAUSTIVELY LONG step-by-step reasoning for the following question:
+    context: {{context}}
+    question: {{question}}
+
+        """
+        return cls(template=_template, input_variables=['context', 'question'])
