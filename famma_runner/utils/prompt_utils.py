@@ -307,16 +307,16 @@ class ReasoningDistillationPrompt(PromptTemplate):
 
     - `<answer>...</answer>`: After your detailed reasoning process, provide your final answer. For multiple-choice questions, specify the option (e.g., "B"). For open-ended questions, give a concise, precise conclusion.
 
-    IMPORTANT: Your thinking process should be very long and explore multiple angles of the problem. Do not abbreviate your reasoning or skip steps. The more comprehensive and detailed your reasoning, the better.
+    IMPORTANT: Your thinking process MUST be at least 200 words long and explore multiple angles of the problem. Do not abbreviate your reasoning or skip steps. The more comprehensive and detailed your reasoning, the better. and MUST USE the tags <think>, </think>, <python>, </python>, <search>, </search>, <information>, </information>, <answer>, </answer> to structure your thinking process.
 
-    Return the final output in the following JSON format:
+    Do EXTREMELY DETAILED and EXHAUSTIVELY LONG step-by-step the thinking process with interleaved <think>, </think>, <python>, </python>, <search>, </search>, <information>, </information>, <answer>, </answer> and return the final output in the following JSON format:
     ```json
     {
         "answer": "<concise final answer>"
     }
     ```
 
-    Now please do an EXTREMELY DETAILED and EXHAUSTIVELY LONG step-by-step reasoning for the following question:
+    Now please consider the following question and context:
     context: {{context}}
     question: {{question}}
 

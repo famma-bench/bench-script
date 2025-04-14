@@ -36,9 +36,6 @@ class DistillationRunner(Runner):
         self.target_db_name = f'{self.llm_name}_distill_{release_version}'
         self.target_db = initialize_database(output_db=self.target_db_name)
 
-        self.use_pot = self.model_config.get('use_pot', False)
-        self.is_reasoning_model = self.model_config.get('is_reasoning_model', False)
-
     def filter_dataset_by_question_id(self, dataset_df, question_ids):
         """
         Filter dataset by specific question_ids.
@@ -123,7 +120,9 @@ class DistillationRunner(Runner):
 
         # If using custom model, load it from custom_llm.py
         if self.model_config.model_name == "custom_llm":
-            pass
+            # Import the custom model to ensure it's registered
+            import main_scripts.custom_llm
+            logger.info("Loading custom LLM model from main_scripts.custom_llm.py")
         llm = LLM.build_from_config(llm_config)
 
         return llm
@@ -176,8 +175,6 @@ class DistillationRunner(Runner):
             
             # Parse response for this specific question
             question_response = parse_reasoning_response(model_output)
-            # rename the answer key to model_answer
-            question_response['model_answer'] = question_response.pop('answer')
             # attach the input k, v to the response
             input_data = row.to_dict()
             for key, value in input_data.items():

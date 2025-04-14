@@ -92,46 +92,91 @@ def generate_response_from_llm(
         return model.generate(message)
 
 
-def parse_reasoning_response(response):
+def _extract_thinking_trajectory_and_answer(content):
     """
-    Parse the response string to extract reasoning and answer.
+    Helper function to extract thinking trajectory and answer from content string.
     
     Args:
-        response: The text response from the model containing <think> tags and JSON answer
+        content: String containing XML-like tags and JSON
         
     Returns:
-        Dictionary containing:
-        - thinking_trajectory: The reasoning text
-        - answer: The answer from the JSON
+        Tuple of (reasoning_text, answer)
     """
-    response_dict = {}
+    # Initialize default values
+    thinking_trajectory = content
+    answer = ''
     
-    # Extract reasoning by removing the JSON part from the response
+    # Extract JSON and reasoning from string
     json_pattern = r'```json\s*({.*?})\s*```'
-    json_match = re.search(json_pattern, response, re.DOTALL)
+    json_match = re.search(json_pattern, content, re.DOTALL)
     
+    # Extract answer from JSON if present
     if json_match:
-        # Get the full response without the JSON part
-        json_start = json_match.start()
-        json_end = json_match.end()
-        
-        # Combine text before and after JSON (if any)
-        reasoning_text = response[:json_start].strip() + " " + response[json_end:].strip()
-        reasoning_text = reasoning_text.strip()
-        
-        if reasoning_text:
-            response_dict['thinking_trajectory'] = reasoning_text
-    else:
-        # If no JSON found, use the whole response as reasoning
-        response_dict['thinking_trajectory'] = response.strip()
+        try:
+            json_data = json_repair.loads(json_match.group(1))
+            if isinstance(json_data, dict) and 'answer' in json_data:
+                answer = json_data['answer']
+            
+            # Remove JSON part to get reasoning text
+            json_start, json_end = json_match.span()
+            thinking_trajectory = (content[:json_start] + content[json_end:]).strip()
+        except (json.JSONDecodeError, KeyError, AttributeError) as e:
+            logger.warning(f"Error parsing JSON answer: {e}")
     
-    # Extract JSON answer
-    try:
-        answer_dict = extract_json_from_text(response)
-        response_dict.update(answer_dict)
-    except (json.JSONDecodeError, KeyError) as e:
-        logger.warning(f"Error parsing JSON answer: {e}")
-        response_dict['answer'] = ''
+    return thinking_trajectory.strip(), answer
+
+
+def parse_reasoning_response(response):
+    """
+    Parse the response to extract reasoning and answer.
+    
+    Args:
+        response: Can be either:
+            - String containing XML-like tags and JSON
+            - Dictionary with 'content' containing XML-like tags and JSON
+            
+    Returns:
+        Dictionary containing:
+        - thinking_trajectory: The reasoning text with tags
+        - answer: The answer from the JSON
+        - reasoning_content: The original reasoning content
+        
+    Examples:
+        >>> parse_reasoning_response("Some text <think>reasoning</think> ```json\n{\"answer\": \"A\"}\n```")
+        {
+            'thinking_trajectory': 'Some text <think>reasoning</think>',
+            'answer': 'A',
+            'reasoning_content': ''
+        }
+        
+        >>> parse_reasoning_response({'content': 'Some text <think>reasoning</think> ```json\n{\"answer\": \"A\"}\n```'},
+        'reasoning_content': 'Some text reasoning'
+        )
+        {
+            'thinking_trajectory': 'Some text <think>reasoning</think>',
+            'answer': 'A',
+            'reasoning_content': 'Some text reasoning'
+        }
+    """
+    response_dict = {
+        'thinking_trajectory': '',
+        'model_answer': '',
+        'reasoning_content': ''
+    }
+    
+    # Handle dictionary input
+    if isinstance(response, dict):
+        if 'content' in response:
+            thinking_trajectory, answer = _extract_thinking_trajectory_and_answer(response['content'])
+            response_dict['thinking_trajectory'] = thinking_trajectory
+            response_dict['model_answer'] = answer
+            response_dict['reasoning_content'] = response.get('reasoning_content', '')
+        return response_dict
+    
+    # Process string input
+    thinking_trajectory, answer = _extract_thinking_trajectory_and_answer(response)
+    response_dict['thinking_trajectory'] = thinking_trajectory
+    response_dict['model_answer'] = answer
     
     return response_dict
 
