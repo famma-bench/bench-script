@@ -7,7 +7,6 @@ from typing import Optional, List, Union, Dict
 from pathlib import Path
 import json_repair
 
-
 logger = get_logger('famma', 'famma.log')
 
 
@@ -32,12 +31,12 @@ def _handle_ocr(ocr_model, images: List[str], prompt: str) -> str:
         temp_img_path = f"temp_img_{i}.jpg"
         with open(temp_img_path, "wb") as f:
             f.write(img_bytes)
-        
+
         # Perform OCR on jpg file
         ocr_result = ocr_model.ocr(temp_img_path)
-        ocr_text = f'\n <image_{i+1}> OCR result: '.join([line[1][0] for res in ocr_result for line in res])
+        ocr_text = f'\n <image_{i + 1}> OCR result: '.join([line[1][0] for res in ocr_result for line in res])
         prompt = f"{prompt}\n{ocr_text}"
-        
+
         # Clean up temporary file
         os.remove(temp_img_path)
     return prompt
@@ -82,7 +81,7 @@ def generate_response_from_llm(
     if model.model_name in ['qwen', 'qwen_vl']:
         response = model.generate(input_prompt, image_dir=images)
         try:
-            return json.loads(response)["choices"][0]["message"]["content"]
+            return json_repair.loads(response)["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError) as e:
             raise ValueError(f"Failed to parse Qwen model response: {e}")
     elif model.model_name == 'gemini' and not model.model_config.use_litellm_api:
@@ -94,38 +93,88 @@ def generate_response_from_llm(
         return None
 
 
-def safe_parse_response(response, question_id_list,is_reasoning_model):
+def parse_reasoning_response(response):
+    """
+    Parse the response string to extract reasoning and answer.
+    
+    Args:
+        response: The text response from the model containing <think> tags and JSON answer
+        
+    Returns:
+        Dictionary containing:
+        - thinking_trajectory: The reasoning text
+        - answer: The answer from the JSON
+    """
+    response_dict = {}
+    
+    # Extract reasoning by removing the JSON part from the response
+    json_pattern = r'```json\s*({.*?})\s*```'
+    json_match = re.search(json_pattern, response, re.DOTALL)
+    
+    if json_match:
+        # Get the full response without the JSON part
+        json_start = json_match.start()
+        json_end = json_match.end()
+        
+        # Combine text before and after JSON (if any)
+        reasoning_text = response[:json_start].strip() + " " + response[json_end:].strip()
+        reasoning_text = reasoning_text.strip()
+        
+        if reasoning_text:
+            response_dict['thinking_trajectory'] = reasoning_text
+    else:
+        # If no JSON found, use the whole response as reasoning
+        response_dict['thinking_trajectory'] = response.strip()
+    
+    # Extract JSON answer
+    try:
+        answer_dict = extract_json_from_text(response)
+        response_dict.update(answer_dict)
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"Error parsing JSON answer: {e}")
+        response_dict['answer'] = ''
+    
+    return response_dict
+
+
+def safe_parse_response(response, question_id_list):
     """
     Parse the response string as JSON or extracts data using regex if JSON parsing fails.
     Args:
-        response_text: The text response from the model
+        response: The text response from the model, can be a string or a dictionary
         question_id_list: List of question IDs to look for
     Returns:
         Dictionary mapping question IDs to their answers and explanations
     """
-    # First try to parse as JSON
-
-    # 初始化响应字典
+    # Initialize response dictionary
     response_dict = {}
 
-    if is_reasoning_model:
-        reasoning_content = response[0]
-        content = response[1]
-        response_dict['reasoning_content'] = reasoning_content  # 使用新字段名
+    # If reasoning is attached, response should be a dictionary
+    if isinstance(response, dict):
+        response_text = response.get('content', '')
+        reasoning = response.get('reasoning_content', '')
+        response_dict['reasoning'] = reasoning
     else:
-        content = response
+        response_text = response
+    
+    if response_text == '':
+        response_dict['result'] = 'error parsing'
 
+    # Try to parse as JSON
     try:
-        # 解析主要内容
-        parsed_data = json_repair.loads(content)
-        if isinstance(parsed_data, dict):
-            response_dict.update(parsed_data)
+        parsed_json = json_repair.loads(response_text)
+        response_dict.update(parsed_json)
     except json.JSONDecodeError:
-        response_dict = extract_json_from_text(content)
-
+        try:
+            extracted_json = extract_json_from_text(response_text)
+            response_dict.update(extracted_json)
+        except Exception as e:
+            logger.warning(f"Error extracting JSON: {e}")
+            response_dict['result'] = 'error parsing'
+    
+    # If JSON parsing fails, use regex
     if response_dict.get('result', None) == 'error parsing':
-        # If JSON parsing fails, use regex
-        logger.info('Start to using regex to extract answers.')
+        logger.info('Starting to use regex to extract answers.')
         parsed_response = {}
 
         for idx, question_id in enumerate(question_id_list):
@@ -137,7 +186,7 @@ def safe_parse_response(response, question_id_list,is_reasoning_model):
                 answer, explanation = match.groups()
                 parsed_response[question_id] = {
                     "answer": answer.strip(),
-                    "explanation": explanation.strip()
+                    "explanation": explanation.strip(),
                 }
             else:
                 logger.warning(f"Could not find match for question {question_id} in response")
@@ -150,8 +199,7 @@ def safe_parse_response(response, question_id_list,is_reasoning_model):
                 else:
                     parsed_response[question_id] = {
                         "answer": "",
-                        "explanation": "",
-                        "unparsed_text": ""
+                        "explanation": ""
                     }
 
         # 保留推理内容
@@ -161,8 +209,8 @@ def safe_parse_response(response, question_id_list,is_reasoning_model):
             logger.warning(
                 "Could not parse any responses. Response text: %s", content)
         return parsed_response
-    else:
-        return response_dict
+        
+    return response_dict
 
 
 def collect_images_from_first_subquestion(sub_question_set_df, parent_dir):

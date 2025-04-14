@@ -6,14 +6,15 @@ import pandas as pd
 import os
 import omegaconf
 from famma_runner.runners.base_runner import Runner
-from famma_runner.utils import collect_images_from_first_subquestion, generate_response_from_llm, safe_parse_response
-from famma_runner.utils import QuestionPrompt, LANGUAGE_ORDER, DC, order_by_language, ProgramOfThoughtsQuestionPrompt
+from famma_runner.utils import generate_response_from_llm, parse_reasoning_response
+from famma_runner.utils import LANGUAGE_ORDER, DC, order_by_language
+from famma_runner.utils.prompt_utils import ReasoningDistillationPrompt
 
-logger = get_logger('generation_runner', 'generation_runner.log')
+logger = get_logger('distillation_runner', 'distillation_runner.log')
 
 
-@Runner.register("generation")
-class GenerationRunner(Runner):
+@Runner.register("distillation")
+class DistillationRunner(Runner):
     def __init__(self, config):
         self.model_config = config["model"]
         self.generation_config = GenerationArguments(**config.get('generation', {}))
@@ -32,17 +33,11 @@ class GenerationRunner(Runner):
 
         # Initialize the DDB
         release_version = self.data_config.data_dir.split('/')[-1].split('.')[0]
-        self.target_db_name = f'{self.llm_name}_ans_{release_version}'
+        self.target_db_name = f'{self.llm_name}_distill_{release_version}'
         self.target_db = initialize_database(output_db=self.target_db_name)
 
         self.use_pot = self.model_config.get('use_pot', False)
         self.is_reasoning_model = self.model_config.get('is_reasoning_model', False)
-        self.ocr_model = None
-        self.use_ocr = self.model_config.get('use_ocr', False)
-        if self.use_ocr:
-            # ref: https://paddlepaddle.github.io/PaddleOCR/main/en/ppocr/quick_start.html#11-install-paddlepaddle
-            from paddleocr import PaddleOCR
-            self.ocr_model = PaddleOCR(use_angle_cls=True)
 
     def filter_dataset_by_question_id(self, dataset_df, question_ids):
         """
@@ -143,99 +138,68 @@ class GenerationRunner(Runner):
         return dataset_df
 
     def generate_answer_for_one_main_question(self, sub_question_set_df):
-        """
-        Generates model answer and explanation for a subset of questions, including both multiple-choice 
-        and open-ended types.
-        """
-        # Get the context from the first sub_question
-        context = sub_question_set_df.iloc[0].get("context", "")
-
-        # Collect images from the first sub-question
-        # parent_dir is the parent directory of the dataset - self.data_config.data_dir
-        parent_dir = os.path.dirname(self.data_config.data_dir)
-        images = collect_images_from_first_subquestion(sub_question_set_df, parent_dir=parent_dir)
-
-        sub_questions = []
-        question_id_list = []
+        """Generate model answer and explanation for each sub-question independently."""
+        model_responses = {}
+        sub_question_set_df.sort_values(by=DC.SUB_QUESTION_ID, inplace=True)
         for _, row in sub_question_set_df.iterrows():
+            question_id = row['question_id']
+
+            if question_id in self.target_db:
+                logger.info(f"Skipping {question_id} because it already exists in the database")
+                continue
+            
+            logger.info(f'start generating answers for {question_id}')
+
+            # Get the context from the first sub_question in the group
+            context = sub_question_set_df.iloc[0].get("context", "")
+            question = row['question']
+            
+            # Create question dictionary for the prompt
             question_dict = {
-                "id": row['question_id'],
                 "type": row['question_type'],
-                "question": row['question']
+                "question": question
             }
 
-            # Add options if it's a multiple-choice question
             if row['question_type'] == 'multiple-choice':
                 question_dict["options"] = row['options']
 
-            sub_questions.append(question_dict)
-            question_id_list.append(row['question_id'])
-
-        # Format the prompt with the structured questions
-        if self.use_pot:
-            prompt = ProgramOfThoughtsQuestionPrompt.init().format(
+            # Generate response for each sub-question independently
+            prompt = ReasoningDistillationPrompt.init().format(
                 context=context,
-                sub_questions=sub_questions
+                question=question_dict
             )
-        else:
-            prompt = QuestionPrompt.init().format(
-                context=context,
-                sub_questions=sub_questions
+ 
+            model_output = generate_response_from_llm(
+                self.llm, 
+                prompt
             )
+            
+            # Parse response for this specific question
+            question_response = parse_reasoning_response(model_output)
+            # rename the answer key to model_answer
+            question_response['model_answer'] = question_response.pop('answer')
+            # attach the input k, v to the response
+            input_data = row.to_dict()
+            for key, value in input_data.items():
+                if key not in question_response:
+                    question_response[key] = value
+            
+            # Write the aggregated subquestion responses to the database
+            write_to_database(self.target_db_name, question_id, question_response)
 
-        model_output = generate_response_from_llm(self.llm, prompt, images, use_ocr=self.use_ocr, ocr_model=self.ocr_model)
-        model_response = safe_parse_response(model_output, question_id_list,is_reasoning_model=self.is_reasoning_model)
-
-        return model_response
+        return model_responses
 
     def run(self):
         # Create a copy of the DataFrame at the start
         dataset_df = self.dataset_df.copy()
 
-        for (_, language, main_question_id), group in dataset_df.groupby(
+        for (_, _, _), group in dataset_df.groupby(
                 ['language_order', DC.LANGUAGE, DC.MAIN_QUESTION_ID]):
-            key = f'{language}_{main_question_id}'
-            # Skip if already in database AND not specifically requested in filtered_main_question_ids
-            if key in self.target_db and (self.filtered_main_question_ids is None or main_question_id not in self.filtered_main_question_ids):
-            # Skip this question since it's already in the database and not specifically requested
-                continue
-            try:
-                logger.info(f'start generating answers for {language} -- main_question_id: {main_question_id}')
-                model_response = self.generate_answer_for_one_main_question(group)
-
-                # Aggregate all subquestions with their answers into a single dictionary
-                subquestion_responses = {}
-                for idx in range(len(group)):
-                    output_key = group.iloc[idx]['question_id']
-
-                    # Create a JSON object with the original input data and the model response
-                    input_data_with_response = group.iloc[idx].to_dict()
-                    
-                    # Always include model_answer and model_explanation
-                    response_update = {
-                        'model_answer': model_response[output_key]['answer'],
-                        'model_explanation': model_response[output_key]['explanation']
-                    }
-
-                    # Only include model_reasoning if self.is_reasoning_model is True
-                    if self.is_reasoning_model and 'reasoning' in model_response:
-                        response_update['model_reasoning'] = model_response['reasoning']
-                
-                    input_data_with_response.update(response_update)
-
-                    # Store the response in the subquestion_responses dictionary
-                    subquestion_responses[output_key] = input_data_with_response
-
-                # Write the aggregated subquestion responses to the database
-                write_to_database(self.target_db_name, key, subquestion_responses)
-            except Exception as e:
-                logger.error(
-                    "Error processing main_question_id %s: %s", main_question_id, str(e))
-                continue
-
+            self.generate_answer_for_one_main_question(group)
+            
         # Save the DataFrame to a file
-        dataset_df.to_csv('output_samples.csv', index=False)
+        dataset_df.to_csv('distillation_samples.csv', index=False)
 
         logger.info('Generation complete')
         logger.info('Result saved to %s in json format', self.target_db_name)
-        logger.info('Result saved to %s in csv format', 'output_samples.csv')
+        logger.info('Result saved to %s in csv format', 'distillation_samples.csv')

@@ -5,7 +5,10 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 <a href="https://famma-bench.github.io/famma/"><img alt="Home Page" src="https://img.shields.io/badge/🌐-Home_Page-blue"></a> • <a href="https://huggingface.co/datasets/weaverbirdllm/famma"><img alt="Hugging Face" src="https://img.shields.io/badge/🤗-Dataset-ffce44?logo=huggingface"></a>
 </div>
 
-
+<div align="center">
+<a href='https://github.com/MShawon/github-clone-count-badge'><img alt='GitHub Clones' src='https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://gist.githubusercontent.com/famma-bench/2c7bc5087a5bcc7fb47fd1e3675d6b90/raw/clone.json&logo=github'></a>
+<img alt="ViewCount" src="https://views.whatilearened.today/views/github/famma-bench/bench-script.svg">
+</div>
 
 
 <div align="center">
@@ -24,6 +27,8 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 ## NEWS
 
 🔥 **Latest Updates**:
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/04] Release of an interactive notebook [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/famma-bench/bench-script/blob/main/notebooks/FAMMA_1_dataset_inspection.ipynb) for exploring and analyzing the FAMMA dataset.
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/03] Release of `release_basic_txt` and `release_livepro_txt`, two purely textual datasets that utilize OCR to extract multimodal information and convert it into textual context for each question in `release_basic` and `release_livepro`, respestively.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/02] Release of `release_livepro` dataset.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/01] Release of `release_basic` dataset, now including answers and explanations with enhanced quality.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png) [2024/06] Initial public release of `FAMMA` benchmark (based on the `release_basic` dataset), along with our paper: [FAMMA: A Benchmark for Financial Domain Multilingual Multimodal Question Answering](https://arxiv.org/abs/2410.04526).
@@ -50,8 +55,10 @@ The "live" nature of FAMMA means:
 
 FAMMA is continuously updated with new questions. We provide different versions of the dataset:
 
-* `release_basic`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
-* `release_livepro`: The release containing 103 questions, created by invited experts. Only the questions are provided.
+- `release_basic`: The release containing 1935 questions, collected from online sources. Apart from the questions, both answers and explanations are provided.
+- `release_basic_txt`: A textual version of `release_basic`, where OCR has been used to extract multimodal information and convert it into contextual text for each question.
+- `release_livepro`: The release containing 103 questions, created by invited experts. Only the questions are provided.
+- `release_livepro_txt`: A textual version of `release_livepro`, generated using OCR to extract and represent the questions in text format.
 
 You can specify the dataset version when downloading, see [Downloading Dataset](#downloading-dataset) for more details.
 
@@ -65,6 +72,7 @@ Clone the repository and install the dependencies:
 git clone https://github.com/famma-bench/bench-script.git
 cd bench-script
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Downloading Dataset
@@ -74,6 +82,8 @@ To download the dataset, run the following command:
 
 
 ```bash
+cd main_scripts
+
 python step_1_download_dataset.py \
     --hf_dir "weaverbirdllm/famma" \
     --split "release_basic" \ # or "release_livepro" or None to download the whole set
@@ -87,6 +97,8 @@ Options:
 
 
 After downloading, the dataset will be saved in the local directory `./data` in json format. 
+
+An alternative example can be found at our interactive notebook [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/famma-bench/bench-script/blob/main/notebooks/FAMMA_1_dataset_inspection.ipynb) for exploring and analyzing the FAMMA dataset. This notebook provides a comprehensive walkthrough of dataset inspection, visualization, and analysis techniques. Try it directly in Google Colab to get hands-on experience with the dataset!
 
 ### Dataset Structure
 
@@ -112,7 +124,7 @@ Each sample in the dataset contains:
 ## Custom LLM Evaluation
 
 One can customized a LLM and evaluate it on the `FAMMA` dataset. It involves two steps:
-1. Define a `generate` function for the LLM to generate the answer and explanation. See [custom_llm.py](./custom_llm.py) for more details.
+1. Define a `generate` function for the LLM to generate the answer and explanation. See [custom_llm.py](main_scripts/custom_llm.py) for more details.
 2. Define a yaml config for the LLM to load the model. See [custom_gen.yaml](./configs/custom_gen.yaml) for more details.
 
 Then the evaluation can be done with the same script (except specify the config file) as the default one.
@@ -123,7 +135,7 @@ Then the evaluation can be done with the same script (except specify the config 
 
 Explore the following tutorials that can be opened directly in Google Colab:
 
-- [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/famma-bench/bench-script/blob/main/notebooks/FAMMA_1_dataset.ipynb) Tutorial 1: Dataset in FAMMA.
+- [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/famma-bench/bench-script/blob/main/notebooks/FAMMA_1_dataset_inspection.ipynb) Tutorial 1: Dataset inspection in FAMMA.
 
 
 ## ERRATA

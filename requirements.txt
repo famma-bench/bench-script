@@ -1,5 +1,9 @@
-omegaconf
+pandas>=1.3.0
+datasets>=2.0.0
+huggingface_hub>=0.8.0
+omegaconf>=2.2.0
+Pillow>=8.0.0
 easyllm_kit
-datasets
 tiktoken
 dictdatabase
+json-repair

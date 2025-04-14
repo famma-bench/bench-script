@@ -5,10 +5,10 @@ import ast
 from pathlib import Path
 from omegaconf import OmegaConf
 from easyllm_kit.utils import get_logger
-from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER
+from famma_runner.utils import find_image_file, DC, ReleaseVersion, LANGUAGE_ORDER, encode_answer
 from PIL import Image
-
-logger = get_logger('dataset_maker', 'question_maker.log')
+import re
+logger = get_logger('dataset_maker', '../question_maker.log')
 
 
 def validate_question_id(df):
@@ -103,9 +103,15 @@ def validate_columns(df):
                                .replace(""", '"')  # Replace curly quotes
                 .replace(""", '"')  # Replace another curly quotes
                                )
-            # make the options = ['A. xxx', 'B. xxx', 'C. xxx', 'D. xxx']
+            # Parse the options string into a list
             options_cleaned = eval(options_cleaned)  # read it as a list
-            parsed_options = [f"{chr(65 + i)}. {option.strip()}" for i, option in enumerate(options_cleaned)]
+            
+            # Check if options are already in the form of ['A. xxx', 'B. xxx', etc.]
+            if all(isinstance(opt, str) and re.match(r'^[A-Z]\.\s', opt.strip()) for opt in options_cleaned):
+                parsed_options = options_cleaned
+            else:
+                # Convert to the format ['A. xxx', 'B. xxx', 'C. xxx', 'D. xxx']
+                parsed_options = [f"{chr(65 + i)}. {option.strip()}" for i, option in enumerate(options_cleaned)]
 
         except (ValueError, SyntaxError):
             # Second try: manual parsing
@@ -164,8 +170,7 @@ def validate_columns(df):
 
     return True
 
-
-def prepare_dataset(csv_path, image_parent_dir, version):
+def prepare_dataset(csv_path, image_parent_dir, version, mask_answer=False):
     """
     Prepare dataset from CSV and convert it to HuggingFace format.
     
@@ -225,7 +230,7 @@ def prepare_dataset(csv_path, image_parent_dir, version):
         # Add image columns - only if this is the first sub-question
         for i in range(1, 8):
             image_key = f'image_{i}'
-            if is_first_subquestion:
+            if is_first_subquestion and version.split('_')[-1] != 'txt':
                 image_name = row[image_key]
                 if pd.notna(image_name):
                     image_name = image_name.split('.')[0]
@@ -248,8 +253,12 @@ def prepare_dataset(csv_path, image_parent_dir, version):
 
         sample[DC.IMAGE_TYPE] = row[DC.IMAGE_TYPE]
 
-        sample[DC.ANSWER] = row[DC.ANSWER]
-        sample[DC.EXPLANATION] = row[DC.EXPLANATION]
+        if mask_answer:
+            sample[DC.ANSWER] = encode_answer(row[DC.ANSWER])
+            sample[DC.EXPLANATION] = encode_answer(row[DC.EXPLANATION])
+        else:
+            sample[DC.ANSWER] = row[DC.ANSWER]
+            sample[DC.EXPLANATION] = row[DC.EXPLANATION]
         sample[DC.TOPIC_DIFFICULTY] = row[DC.TOPIC_DIFFICULTY]
         sample[DC.QUESTION_TYPE] = row[DC.QUESTION_TYPE]
         sample[DC.SUBFIELD] = row[DC.SUBFIELD]
@@ -261,7 +270,7 @@ def prepare_dataset(csv_path, image_parent_dir, version):
         # Add answer image columns - only if this is the first sub-question
         for i in range(1, 7):
             ans_image_key = f'ans_image_{i}'
-            if is_first_subquestion:
+            if is_first_subquestion and version.split('_')[-1] != 'txt':
                 image_name = row[ans_image_key]
                 if pd.notna(image_name):
                     image_name = image_name.split('.')[0]
@@ -272,6 +281,7 @@ def prepare_dataset(csv_path, image_parent_dir, version):
                     if full_path is not None:
                         # Read the image file into PIL Image
                         img = Image.open(full_path)
+                        # we dont need to encode the answer image as we assume we will try to avoid the answer image in the fuure 
                         # Store the PIL Image object directly
                         sample[ans_image_key] = img
                     else:
@@ -364,7 +374,7 @@ def main():
     Reads configuration from data_config.yaml.
     """
     # Load configuration
-    config = OmegaConf.load("configs/data_config.yaml")
+    config = OmegaConf.load("../configs/data_config.yaml")
 
     # Initialize DatasetDict
     dataset_dict = DatasetDict()
@@ -373,12 +383,14 @@ def main():
     for entry in config.data.source_csv_dir:
         version = entry['version']
         csv_path = entry['path']
+        mask_answer = entry['mask_answer']
 
         logger.info(f"Preparing dataset for version: {version}")
         dataset = prepare_dataset(
             csv_path=csv_path,
             image_parent_dir=config.data.source_image_dir,
-            version=version
+            version=version,
+            mask_answer=mask_answer
         )
 
         # Add to DatasetDict with version as split name

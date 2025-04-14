@@ -6,10 +6,11 @@ from datasets import load_dataset
 from easyllm_kit.utils import save_json
 import numpy as np
 import pandas as pd
+import base64
 from famma_runner.utils.data_const import DatasetColumns as DC
 
 
-def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release_v2406"):
+def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release_v2406", decode_answer=False):
     """
     Convert data in Dataset format to list format.
     Saves images locally and returns their paths.
@@ -18,6 +19,7 @@ def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release
         dataset: HuggingFace dataset
         save_dir: Base directory to save images
         release_version: Version string to append to images folder
+        decode_answer: If True, decode base64-encoded answers
     """
     json_list = []
     # Create images directory if it doesn't exist
@@ -41,13 +43,21 @@ def convert_to_json_list(dataset, save_dir="./hf_data", release_version="release
 
                 # Store the relative path in the JSON
                 sample_res[key] = os.path.join(f"images_{release_version}", image_filename)
+            elif decode_answer and (key == 'answers' or key == 'explanation') and isinstance(value, str):
+                # Decode base64-encoded answers if flag is set
+                try:
+                    decoded_value = base64.b64decode(value).decode('utf-8')
+                    sample_res[key] = decoded_value
+                except:
+                    # If decoding fails, keep the original value
+                    sample_res[key] = value
             else:
                 sample_res[key] = value
         json_list.append(sample_res)
     return json_list
 
 
-def download_data(hf_dir, split=None, save_dir="./hf_data", from_local=False):
+def download_data(hf_dir, split=None, save_dir="./hf_data", from_local=False, decode_answer=False):
     """
     Download dataset from HuggingFace repo and convert to JSON files.
     Images are saved locally in {save_dir}/images/.
@@ -57,6 +67,7 @@ def download_data(hf_dir, split=None, save_dir="./hf_data", from_local=False):
         split (str, optional): Specific split to download. If None, downloads all splits.
         save_dir (str): Directory to save the JSON files and images
         from_local (bool): If True, load from local cache instead of HuggingFace
+        decode_answer (bool): If True, decode base64-encoded answers
     """
     try:
         # Create save directory if it doesn't exist
@@ -70,7 +81,8 @@ def download_data(hf_dir, split=None, save_dir="./hf_data", from_local=False):
             else:
                 # Load from HuggingFace
                 dataset = load_dataset(hf_dir, split=split, cache_dir=save_dir)
-            json_list = convert_to_json_list(dataset, save_dir=save_dir, release_version=split)
+            json_list = convert_to_json_list(dataset, save_dir=save_dir, release_version=split,
+                                             decode_answer=decode_answer)
 
             # Save to JSON file
             split_path = os.path.join(save_dir, f"{split}.json")
@@ -80,7 +92,8 @@ def download_data(hf_dir, split=None, save_dir="./hf_data", from_local=False):
         else:
             dataset = load_dataset(hf_dir)
             for split_name in dataset.keys():
-                json_list = convert_to_json_list(dataset[split_name], save_dir=save_dir, release_version=split_name)
+                json_list = convert_to_json_list(dataset[split_name], save_dir=save_dir, release_version=split_name,
+                                                 decode_answer=decode_answer)
 
                 # Save to JSON file
                 split_path = os.path.join(save_dir, f"{split_name}.json")
@@ -125,6 +138,7 @@ def sample_questions(df, num_english_main_questions=40, num_chinese_main_questio
     """
     Sample questions from the dataset.
     """
+
     def sample_language_questions(df, language, num_questions):
         main_ids = df[df[DC.LANGUAGE] == language][DC.MAIN_QUESTION_ID].unique()
         sampled_main_ids = np.random.choice(main_ids, num_questions, replace=False)
@@ -135,7 +149,7 @@ def sample_questions(df, num_english_main_questions=40, num_chinese_main_questio
     # Sample questions for each language
     language_samples = {
         'english': num_english_main_questions,
-        'chinese': num_chinese_main_questions, 
+        'chinese': num_chinese_main_questions,
         'french': num_french_main_questions
     }
 
@@ -159,17 +173,17 @@ def sample_questions(df, num_english_main_questions=40, num_chinese_main_questio
             # Get subset for this language
             language_mask = df_to_process[DC.LANGUAGE] == language
             language_df = df_to_process[language_mask]
-            
+
             # Get unique main question IDs in sorted order
             unique_main_ids = sorted(language_df[DC.MAIN_QUESTION_ID].unique())
-            
+
             # Create mapping from old to new main question IDs
             main_id_mapping = {old_id: new_id for new_id, old_id in enumerate(unique_main_ids, 1)}
-            
+
             # Update main question IDs
             df_to_process.loc[language_mask, DC.MAIN_QUESTION_ID] = \
                 df_to_process.loc[language_mask, DC.MAIN_QUESTION_ID].map(main_id_mapping)
-            
+
             # For each main question, reindex the subquestions
             for main_id in df_to_process.loc[language_mask, DC.MAIN_QUESTION_ID].unique():
                 main_q_mask = (df_to_process[DC.MAIN_QUESTION_ID] == main_id) & language_mask
@@ -182,3 +196,15 @@ def sample_questions(df, num_english_main_questions=40, num_chinese_main_questio
     return sampled_df, res_df
 
 
+def encode_answer(text):
+    """Encode text to base64"""
+    if pd.isna(text):
+        return ""
+    return base64.b64encode(str(text).encode('utf-8')).decode('utf-8')
+
+
+def decode_answer(text):
+    """Decode text from base64"""
+    if pd.isna(text):
+        return ""
+    return base64.b64decode(text).decode('utf-8')
