@@ -184,3 +184,7 @@ cache/
 hf_data_backup_0307/
 /hf_data_backup_0307/
 /notebooks/draft.ipynb
+
+# specific files
+configs/*.yaml
+
