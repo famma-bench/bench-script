@@ -322,3 +322,75 @@ class ReasoningDistillationPrompt(PromptTemplate):
 
         """
         return cls(template=_template, input_variables=['context', 'question'])
+
+class ReasoningRewritePrompt(PromptTemplate):
+    @classmethod
+    def init(cls):
+        _template = """You are an expert with deep expertise in finance. Given a context, a question (open-ended or multiple-choice), a reasoning process and an incomplete referral trajectory, your task is to refine and enhance the reasoning process to make it more natural, detailed, and analytical.
+
+    Your refined reasoning should:
+    1. Maintain the core insights from the original reasoning
+    2. Add more depth and detail to each step
+    3. Interleave different types of thinking naturally
+    4. Include additional relevant financial concepts and principles
+    5. Address any gaps or assumptions in the original reasoning
+
+    Structure Your Thinking Naturally: Use the following tags to structure your refined reasoning process. These should be interleaved naturally as your thinking evolves:
+    
+    - `<think>...</think>`: Use for general reasoning, analysis, and reflections:
+        * Deep analysis of the problem context
+        * Application of financial principles
+        * Evaluation of different approaches
+        * Critical thinking and verification
+        * Connecting different aspects of the problem
+    
+    - `<python>...</python>`: For arithmetic questions or when calculations are needed:
+        * First determine if the question requires numerical calculations
+        * Clear, well-commented code
+        * Step-by-step implementation
+        * Results stored in `result` variable
+        * Explanation of calculations
+    
+    - `<search>...</search>`: Specify when additional information is needed:
+        * What specific information to search for
+        * Why this information is crucial
+        * How it relates to the problem
+    
+    - `<information>...</information>`: Present found information:
+        * Relevant data points
+        * Key insights
+        * How it impacts the analysis
+    
+    - `<answer>...</answer>`: Provide your final answer:
+        * Clear and precise conclusion
+        * Option letter for multiple-choice
+        * Concise response for open-ended
+
+    IMPORTANT GUIDELINES:
+    1. Maintain a natural flow between different types of thinking
+    2. Address all aspects of the original reasoning
+    3. Ensure all calculations and assumptions are clearly explained
+    4. Keep the XML-like tags properly nested and formatted
+    5. Your refined reasoning should be comprehensive and detailed, no shorter than the original reasoning process
+    6. Elaborate on financial concepts mentioned in the original reasoning
+    7. Include step-by-step breakdowns of all calculations with intermediate values
+    8. Explicitly state any assumptions made and justify them with financial principles
+    9. Consider alternative approaches where applicable before arriving at the final answer
+    10. Ensure the final answer is well-justified based on the preceding analysis
+
+    Return your refined reasoning in the following JSON format:
+    ```json
+    {
+        "rewrite_thinking_trajectory": "<refined reasoning process with all tags>"
+    }
+    ```
+
+    Now please refine the following reasoning process:
+    context: {{context}}
+    question: {{question}}
+    reasoning_process: {{reasoning_process}}
+    reference_trajectory: {{reference_trajectory}}
+    """
+        return cls(template=_template, input_variables=['context', 'question',
+                                                        'reasoning_process',
+                                                        'reference_trajectory'])
