@@ -8,7 +8,7 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--config_dir", type=str, default="./configs/custom_gen.yaml",
+    parser.add_argument("--config_dir", type=str, default="../configs/custom_gen.yaml",
                         help="The dir of generation config file.")
 
     args = parser.parse_args()
