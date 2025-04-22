@@ -175,7 +175,7 @@ class ProgramOfThoughtsQuestionPrompt(PromptTemplate):
         )
 
 
-class QuestionThinkPrompt(PromptTemplate):
+class QuestionPromptForReasoningFineTune(PromptTemplate):
     @classmethod
     def init(cls):
         _template = """You are a highly knowledgeable financial expert. Please answer the questions in the finance domain. You are given context, images, questions and options.
@@ -183,38 +183,32 @@ class QuestionThinkPrompt(PromptTemplate):
 
         Question Format:
         - Context: The given financial context.
-        - Sub_questions: A list of sub-questions, where each contains:
-        id: unique identifier for the sub-question
-        type: question type ('multiple-choice' or 'open-ended')
-        question: the actual question text
-        - Images: Image placeholders like '<image_1>', '<image_2>' refer to images. We use OCR to extract the text from the images.
+        - question: the actual question text along with the question type, if it is a multiple-choice question, the options are also provided.
 
         Answering Guidelines:
-        Please first have a step-by-step thinking process of how to approach the question, noted using <think> and </think> and then provide answer:
-        - For multiple-choice questions, return the option index A, B, C, D, etc.
-        - For open-ended questions, provide a concise and precise answer.
-
-        Your response must be in a standard JSON format and should follow this structure:
-        ```json
-        {
-            "<question_id>": {
-                "answer": "<answer>"
-            },
-            "<question_id>": {
-                "answer": "<answer>"
-            },
-            ...
-        }
-        ```
-        Ensure that the response strictly adheres to JSON syntax without any additional content. 
-        Now please answer the following question:
+        Please first provide a detailed step-by-step thinking process to solve the question, enclosed within <think> tags:
+        <think>
+        [Your step-by-step reasoning process here. Break down the problem, analyze the context, consider relevant financial concepts, and work through calculations methodically, verify the reasoning process is correct.]
+        MUST use the same language as the question, if the question is in Chinese or French, your answer should also be in Chinese or French.
+        </think>
+        
+        Then provide your final answer within <answer> tags:
+        <answer>
+        For multiple-choice questions: Provide the letter of the correct option (A, B, C, D, etc.)
+        For open-ended questions: Provide a concise, precise answer based on your reasoning.
+        MUST use the same language as the question, if the question is in Chinese or French, your answer should also be in Chinese or French.
+        </answer>
+        
+        Now you are given the following question:
         context: {{context}}
-        {{sub_questions}} 
+        question: {{question}}
+        
+        Please think step by step and provide your final answer.
         """
 
         return cls(
             template=_template,
-            input_variables=["context", "sub_questions"]
+            input_variables=["context", "question"]
         )
 
 
@@ -377,6 +371,7 @@ class ReasoningRewritePrompt(PromptTemplate):
     8. Explicitly state any assumptions made and justify them with financial principles
     9. Consider alternative approaches where applicable before arriving at the final answer
     10. Ensure the final answer is well-justified based on the preceding analysis
+    11. MUST use the same language as the question, if the question is in Chinese or French, your refined reasoning process should also be in Chinese or French.
 
     Return your refined reasoning in the following JSON format:
     ```json

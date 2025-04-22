@@ -105,24 +105,24 @@ def _extract_thinking_trajectory_and_answer(content):
     # Initialize default values
     thinking_trajectory = content
     answer = ''
-    
+
     # Extract JSON and reasoning from string
     json_pattern = r'```json\s*({.*?})\s*```'
     json_match = re.search(json_pattern, content, re.DOTALL)
-    
+
     # Extract answer from JSON if present
     if json_match:
         try:
             json_data = json_repair.loads(json_match.group(1))
             if isinstance(json_data, dict) and 'answer' in json_data:
                 answer = json_data['answer']
-            
+
             # Remove JSON part to get reasoning text
             json_start, json_end = json_match.span()
             thinking_trajectory = (content[:json_start] + content[json_end:]).strip()
         except (json.JSONDecodeError, KeyError, AttributeError) as e:
             logger.warning(f"Error parsing JSON answer: {e}")
-    
+
     return thinking_trajectory.strip(), answer
 
 
@@ -163,7 +163,7 @@ def parse_reasoning_response(response):
         'model_answer': '',
         'reasoning_content': ''
     }
-    
+
     # Handle dictionary input
     if isinstance(response, dict):
         if 'content' in response:
@@ -172,12 +172,12 @@ def parse_reasoning_response(response):
             response_dict['model_answer'] = answer
             response_dict['reasoning_content'] = response.get('reasoning_content', '')
         return response_dict
-    
+
     # Process string input
     thinking_trajectory, answer = _extract_thinking_trajectory_and_answer(response)
     response_dict['thinking_trajectory'] = thinking_trajectory
     response_dict['model_answer'] = answer
-    
+
     return response_dict
 
 
@@ -200,7 +200,7 @@ def safe_parse_response(response, question_id_list):
         response_dict['reasoning'] = reasoning
     else:
         response_text = response
-    
+
     if response_text == '':
         response_dict['result'] = 'error parsing'
 
@@ -215,7 +215,7 @@ def safe_parse_response(response, question_id_list):
         except Exception as e:
             logger.warning(f"Error extracting JSON: {e}")
             response_dict['result'] = 'error parsing'
-    
+
     # If JSON parsing fails, use regex
     if response_dict.get('result', None) == 'error parsing':
         logger.info('Starting to use regex to extract answers.')
@@ -251,7 +251,7 @@ def safe_parse_response(response, question_id_list):
                 "Could not parse any responses. Response text: %s", response_text)
 
         return parsed_response
-        
+
     return response_dict
 
 

@@ -10,6 +10,8 @@ class ReleaseVersion(str, Enum):
     RELEASE_V2 = 'release_livepro'
     RELEASE_V3 = 'release_basic_txt'
     RELEASE_V4 = 'release_livepro_txt'
+    RELEASVE_REASONING_V1 = 'release_reasoning_basic_txt'
+
     @classmethod
     def to_short_name(cls, release: str) -> str:
         """Convert release version to short name"""
@@ -18,6 +20,7 @@ class ReleaseVersion(str, Enum):
             cls.RELEASE_V2: 'r2',
             cls.RELEASE_V3: 'r3',
             cls.RELEASE_V4: 'r4',
+            cls.RELEASVE_REASONING_V1: 'r3_reasoning'
         }
         return mapping.get(release, release)
     
@@ -29,6 +32,7 @@ class ReleaseVersion(str, Enum):
             'r2': cls.RELEASE_V2,
             'r3': cls.RELEASE_V3,
             'r4': cls.RELEASE_V4,
+            'r3_reasoning': cls.RELEASVE_REASONING_V1
         }
         return mapping.get(short_name, short_name)
 
@@ -147,6 +151,55 @@ class DatasetColumns(str, Enum):
             
         return True
 
+class ReasoningColumns(str, Enum):
+    """
+    Enum class for reasoning column names.
+    """
+    INDEX = 'idx'
+    QUESTION_ID = 'question_id'
+    CONTEXT = 'context'
+    QUESTION = 'question'
+    OPTIONS = 'options'
+    ANSWER = 'answers'
+    THINKING_TRAJECTORY = 'thinking_trajectory'
+    STRUCTURED_THINKING_TRAJECTORY = 'structured_thinking_trajectory'
+    TOPIC_DIFFICULTY = 'topic_difficulty'
+    QUESTION_TYPE = 'question_type'
+    SUBFIELD = 'subfield'
+    LANGUAGE = 'language'
+    MAIN_QUESTION_ID = 'main_question_id'
+    SUB_QUESTION_ID = 'sub_question_id'
+    IS_ARITHMETIC = 'is_arithmetic'
+    SOURCE_RELEASE = 'source_release'
+    RELEASE = 'release'
+
+    @classmethod
+    def get_features(cls) -> Features:
+        """Get the features/schema for the dataset.
+        
+        Returns:
+            Features: A Features object defining the schema of the dataset.
+        """
+        return Features({
+            cls.INDEX: Value("int64"),
+            cls.QUESTION_ID: Value("string"),
+            cls.SOURCE_RELEASE: Value("string"),
+            cls.CONTEXT: Value("string"),
+            cls.QUESTION: Value("string"),
+            cls.OPTIONS: Sequence(Value("string")),
+            cls.ANSWER: Value("string"),
+            cls.THINKING_TRAJECTORY: Value("string"),
+            cls.STRUCTURED_THINKING_TRAJECTORY: Value("string"),
+            cls.TOPIC_DIFFICULTY: Value("string"),
+            cls.QUESTION_TYPE: Value("string"),
+            cls.SUBFIELD: Value("string"),
+            cls.LANGUAGE: Value("string"),
+            cls.MAIN_QUESTION_ID: Value("int64"),
+            cls.SUB_QUESTION_ID: Value("int64"),
+            cls.IS_ARITHMETIC: Value("bool"),
+            cls.RELEASE: Value("string")
+        })
 
 # Define the desired language order
 LANGUAGE_ORDER = {'english': 0, 'chinese': 1, 'french': 2}
+
