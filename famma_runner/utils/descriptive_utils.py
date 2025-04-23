@@ -44,8 +44,16 @@ def get_dataset_statistics(data_dir):
             stats["unique_main_question_ids"].add(item["main_question_id"])
         stats["language_count"][item["language"]] += 1
         stats["question_type_count"][item["question_type"]] += 1
-        stats["image_type_count"][item["image_type"]] += 1
-        stats["image_type_set"].add(item["image_type"])
+        # Check for image-related columns
+        if "image_type" in item:
+            stats["image_type_count"][item["image_type"]] += 1
+            stats["image_type_set"].add(item["image_type"])
+        
+        # Check for image_1 and image_2 fields
+        if "image_1" in item and item["image_1"] != 'None':
+            stats["image_count"] = stats.get("image_count", 0) + 1
+        if "image_2" in item and item["image_2"] != 'None':
+            stats["image_count"] = stats.get("image_count", 0) + 1
         stats["subfield_count"][item["subfield"]] += 1
         stats["subfield_set"].add(item["subfield"])
         stats["topic_difficulty_count"][item["topic_difficulty"]] += 1
