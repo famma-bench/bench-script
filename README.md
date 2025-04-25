@@ -27,6 +27,7 @@ Scripts for evaluating the `FAMMA` (Financial Domain Multilingual Multimodal Que
 ## NEWS
 
 🔥 **Latest Updates**:
+- ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/04] Release of `FAMMA-Reasoning` dataset, an extension of `FAMMA` featuring richly annotated, high-quality reasoning chains distilled from DeepSeek-R1.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/04] Release of an interactive notebook [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/famma-bench/bench-script/blob/main/notebooks/FAMMA_1_dataset_inspection.ipynb) for exploring and analyzing the FAMMA dataset.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/03] Release of `release_basic_txt` and `release_livepro_txt`, two purely textual datasets that utilize OCR to extract multimodal information and convert it into textual context for each question in `release_basic` and `release_livepro`, respestively.
 - ![new](https://img.alicdn.com/imgextra/i4/O1CN01kUiDtl1HVxN6G56vN_!!6000000000764-2-tps-43-19.png)[2025/02] Release of `release_livepro` dataset.
