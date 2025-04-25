@@ -52,14 +52,12 @@ def get_dataset_statistics(data_dir):
         # Check for image_1 and image_2 fields
         if "image_1" in item and item["image_1"] != 'None':
             stats["image_count"] = stats.get("image_count", 0) + 1
-        if "image_2" in item and item["image_2"] != 'None':
-            stats["image_count"] = stats.get("image_count", 0) + 1
         stats["subfield_count"][item["subfield"]] += 1
         stats["subfield_set"].add(item["subfield"])
         stats["topic_difficulty_count"][item["topic_difficulty"]] += 1
-        if item["explanation"]:
+        if "explanation" in item and item["explanation"]:
             stats["explanation_count"] += 1
-        if item["image_2"] != 'None':
+        if "image_2" in item and item["image_2"] != 'None':
             stats["multiple_images_count"] += 1
 
         # Count arithmetic questions

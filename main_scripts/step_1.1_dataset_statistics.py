@@ -8,7 +8,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--data_dir", type=str,
-                        default="./hf_data/release_v2501.json", help="The parent dir of dataset")
+                        default="../hf_data/release_reasoning_basic_txt.json", help="The parent dir of dataset")
 
     args = parser.parse_args()
 
