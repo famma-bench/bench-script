@@ -1,17 +1,17 @@
 runner_name: evaluation
 
 data:
-  data_dir: ./ddb_storage/o1-mini_ans_release_v2501
-  model_name_to_eval: o1-mini
+  data_dir: ./ddb_storage/ep-20250207233849-7nnhx_ans_release_v2406.json
+  model_name_to_eval: xxx
   gold_dir: hf_data/release_v2406.json
-  question_id: None
+  main_question_id: None
 
 model:
   model_name: gemini
   model_full_name: gemini-1.5-pro-002
   use_api: true
-  api_key: xx
-  api_url: https://litellm.vllm.yesy.dev
+  api_key: xxx
+  api_url: xxx
   use_litellm_api: True
 
 generation:

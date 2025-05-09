@@ -88,8 +88,9 @@ def generate_response_from_llm(
         message = [input_prompt, images]
         return model.generate(message)
     else:
-        message = _prepare_litellm_message(input_prompt, images)
-        return model.generate(message)
+        # message = _prepare_litellm_message(input_prompt, images)
+        # return model.generate(message)
+        return None
 
 
 def _extract_thinking_trajectory_and_answer(content):
@@ -225,7 +226,7 @@ def safe_parse_response(response, question_id_list):
             # Pattern to match: "q1": {"answer": "some answer", "explanation": "some explanation"}
             pattern = rf'"{question_id}"\s*:\s*\{{\s*"answer"\s*:\s*"(.*?)"\s*,\s*"explanation"\s*:\s*"(.*?)"\s*\}}'
 
-            match = re.search(pattern, response_text)
+            match = re.search(pattern, content)
             if match:
                 answer, explanation = match.groups()
                 parsed_response[question_id] = {
@@ -238,7 +239,7 @@ def safe_parse_response(response, question_id_list):
                     logger.warning(f"Save the unparsed text in 'explanation' for question {question_id} in response")
                     parsed_response[question_id] = {
                         "answer": "",
-                        "explanation": response_text
+                        "explanation": content
                     }
                 else:
                     parsed_response[question_id] = {
@@ -246,10 +247,12 @@ def safe_parse_response(response, question_id_list):
                         "explanation": ""
                     }
 
+        # 保留推理内容
+        if is_reasoning_model:
+            parsed_response['reasoning_content'] = reasoning_content
         if not parsed_response:
             logger.warning(
-                "Could not parse any responses. Response text: %s", response_text)
-
+                "Could not parse any responses. Response text: %s", content)
         return parsed_response
 
     return response_dict
