@@ -10,7 +10,7 @@ def main():
     parser.add_argument(
         "--hf_dir", 
         type=str, 
-        default="weaverbirdllm/famma",
+        default="weaverbirdllm/famma-reasoning",
         # default="./cache/release_v2501",
         help="The HuggingFace repository name"
     )
