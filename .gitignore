@@ -181,4 +181,5 @@ cache/
 #.idea/
 
 
+*.profile_default
 *.pdf

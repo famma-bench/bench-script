@@ -1,6 +1,7 @@
 import argparse
 from omegaconf import OmegaConf
 from famma_runner.runners import Runner
+import custom_llm  # import this when using customized llm
 
 if __name__ == "__main__":
     """
@@ -8,7 +9,7 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--config_dir", type=str, default="../configs/gen_config.yaml",
+    parser.add_argument("--config_dir", type=str, default="../configs/custom_gen.yaml",
                         help="The dir of generation config file.")
 
     args = parser.parse_args()

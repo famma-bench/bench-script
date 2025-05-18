@@ -1,12 +1,17 @@
 runner_name: generation
 
 data:
-  data_dir: ./hf_data/release_v2501.json
-  main_question_id: null
+  data_dir: ../hf_data/release_livepro.json
+  question_id: english_1_1_r2
 
 model:
   model_name: custom_llm
-  model_full_name: custom_llm_full_name
+  api_key: sk-xx
+  api_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model_full_name: qwen-vl-max # deepseek-r1-distill-qwen-32b
+  use_ocr: false
+  use_pot: false
+  is_reasoning_model: false
 
 generation:
   temperature: 1.0
