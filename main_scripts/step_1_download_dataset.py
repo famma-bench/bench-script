@@ -10,7 +10,7 @@ def main():
     parser.add_argument(
         "--hf_dir", 
         type=str, 
-        default="weaverbirdllm/famma-reasoning",
+        default="weaverbirdllm/famma",
         # default="./cache/release_v2501",
         help="The HuggingFace repository name"
     )
@@ -18,7 +18,7 @@ def main():
     parser.add_argument(
         "--split", 
         type=str, 
-        default=None,
+        default='release_livepro',
         help="Specific split to download (e.g., 'release_basic'). If not specified, downloads all splits."
     )
     
