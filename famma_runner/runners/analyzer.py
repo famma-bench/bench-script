@@ -1,7 +1,6 @@
 from easyllm_kit.utils.io_utils import initialize_database, write_to_database
 from easyllm_kit.utils import get_logger, read_json, convert_to_dict
 import pandas as pd
-
 from famma_runner.runners.base_runner import Runner
 from famma_runner.utils import DC, LANGUAGE_ORDER, calculate_accuracy
 
@@ -33,8 +32,7 @@ class Analyzer(Runner):
 
         # Create a DataFrame from the list of dictionaries
         df = pd.DataFrame(records)
-        df.to_csv('temp.csv', index=False)
-        df['is_correct_by_model'] = df['is_correct_by_model'].map(lambda x: 1 if x == 'correct' else 0)
+        df['is_correct_by_model'] = df['is_correct_by_model'].map(lambda x: 1 if x == 'correct' or x is True else 0)
         return df
 
     def run(self):
@@ -44,21 +42,26 @@ class Analyzer(Runner):
             'arithmetic': lambda df: df[df['is_arithmetic'] == '1'],
             'no_arithmetic': lambda df: df[df['is_arithmetic'] == '0']
         }
-        
+
         for analysis_type, filter_func in analysis_types.items():
             # Filter the dataset based on the current analysis type
             current_df = filter_func(self.dataset_df)
-            
+
             # Create metrics dictionary for current analysis type
             current_metrics = {}
-            
+
             # Basic counts
             current_metrics['total_questions'] = len(current_df)
             current_metrics['total_english_questions'] = len(current_df[current_df[DC.LANGUAGE] == 'english'])
             current_metrics['total_chinese_questions'] = len(current_df[current_df[DC.LANGUAGE] == 'chinese'])
             current_metrics['total_french_questions'] = len(current_df[current_df[DC.LANGUAGE] == 'french'])
-            
+
             # Calculate accuracies
+            print("Total questions:", len(current_df))
+            print("Sum correct:", current_df['is_correct_by_model'].sum())
+            print("Mean (accuracy):", current_df['is_correct_by_model'].mean())
+            print("Manual acc:", current_df['is_correct_by_model'].sum() / len(current_df))
+
             overall_acc = calculate_accuracy(current_df)
             current_metrics["overall_acc"] = overall_acc
 
@@ -73,13 +76,13 @@ class Analyzer(Runner):
 
             # Language-specific analysis
             current_correct_question_ids = {}
-            
+
             for language in LANGUAGE_ORDER:
                 language_df = current_df[current_df[DC.LANGUAGE] == language]
-                
+
                 language_acc = calculate_accuracy(language_df, group_by=[DC.TOPIC_DIFFICULTY])
                 current_metrics[f"overall_acc_by_difficulty_{language}"] = language_acc
-                
+
                 for difficulty in language_df[DC.TOPIC_DIFFICULTY].unique():
                     difficulty_df = language_df[language_df[DC.TOPIC_DIFFICULTY] == difficulty]
                     correct_ids = difficulty_df[difficulty_df['is_correct_by_model'] == 1][DC.QUESTION_ID].tolist()
