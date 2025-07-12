@@ -3,11 +3,11 @@
   **Markdown**
 
   ```markdown
-[![GitHub Clones](https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://gist.githubusercontent.com/xiaojingli/1d27ba94e93440c6e862146dd4946367/raw/clone.json&logo=github)](https://github.com/MShawon/github-clone-count-badge)
+[![GitHub Clones](https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://gist.githubusercontent.com/xiaojingli/d3e6aac3552c4700b7b94ac9a827506e/raw/clone.json&logo=github)](https://github.com/MShawon/github-clone-count-badge)
 
   ```
 
   **HTML**
   ```html
-<a href='https://github.com/MShawon/github-clone-count-badge'><img alt='GitHub Clones' src='https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://gist.githubusercontent.com/xiaojingli/1d27ba94e93440c6e862146dd4946367/raw/clone.json&logo=github'></a>
+<a href='https://github.com/MShawon/github-clone-count-badge'><img alt='GitHub Clones' src='https://img.shields.io/badge/dynamic/json?color=success&label=Clone&query=count&url=https://gist.githubusercontent.com/xiaojingli/d3e6aac3552c4700b7b94ac9a827506e/raw/clone.json&logo=github'></a>
 ```
